@@ -1,9 +1,9 @@
-import Replicate from "replicate";
-import "dotenv/config";
 import express from "express";
 import bodyParser from "body-parser";
+import cors from "cors";
+import Replicate from "replicate";
+import "dotenv/config";
 import { Request, Response } from "express";
-
 import formatPrompt from "./utils/formatPrompt";
 
 const app = express();
@@ -13,6 +13,7 @@ const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
 
+app.use(cors()); // todo later - allow only specific origins
 app.use(bodyParser.json());
 
 app.post("/", async (req: Request, res: Response) => {
