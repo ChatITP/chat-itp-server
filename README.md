@@ -24,3 +24,24 @@ After building, the production server can be started by running:
 ```
 npm start
 ```
+
+## API Endpoints
+
+### /
+
+Method: POST
+
+Request Body:
+
+```js
+{
+  systemPrompt: // your system prompt,
+  userPrompt: // your user prompt
+}
+```
+
+Fetch example
+
+```js
+
+```
