@@ -23,23 +23,24 @@ app.use(bodyParser.json());
 app.use("/db", dbRouter);
 const memory = new BufferMemory({ returnMessages: true });
 
-const prompt = ChatPromptTemplate.fromMessages([
-  ["system", "You are a helpful assistant."],
-  new MessagesPlaceholder("history"),
-  ["human", "{input}"],
-]);
+let initialSystemPrompt = "";
 
-const chain = RunnableSequence.from([
-  { input: (initialInput) => initialInput.input, memory: () => memory.loadMemoryVariables({}) },
-  {
-    input: (previousOutput) => previousOutput.input,
-    history: (previousOutput) => previousOutput.memory.history,
-  },
-  prompt,
-]);
+app.post("/initialize", async (req: Request, res: Response) => {
+  if (!req.body || !req.body.systemPrompt) {
+    res.status(400).json({ success: false, error: "Invalid request" });
+    return;
+  }
+
+  initialSystemPrompt = req.body.systemPrompt;
+  // console.log(initialSystemPrompt); 
+  memory.clear();
+  await memory.saveContext({ input: "initialization" }, { output: initialSystemPrompt });
+
+  res.json({ success: true });
+});
 
 app.post("/", async (req: Request, res: Response) => {
-  if (!req.body || !req.body.systemPrompt || !req.body.userPrompt) {
+  if (!req.body || !req.body.userPrompt) {
     res.status(400).json({ success: false, error: "Invalid request" });
     return;
   }
@@ -49,10 +50,9 @@ app.post("/", async (req: Request, res: Response) => {
   type MessageType = {
     content: string;
   };
-  // console.log("Past Messages:", pastMessages);
 
   const input = {
-    prompt: `${req.body.systemPrompt}\n\n${(pastMessages.history as MessageType[])
+    prompt: `${initialSystemPrompt}\n\n${(pastMessages.history as MessageType[])
       .map((msg) => msg.content)
       .join("\n")}\nuser: ${userPrompt}`,
   };
@@ -61,7 +61,6 @@ app.post("/", async (req: Request, res: Response) => {
     const output = await replicate.run("meta/meta-llama-3-70b-instruct", { input });
     const aiResponse = Array.isArray(output) ? output.join("") : output;
     await memory.saveContext({ input: userPrompt }, { output: aiResponse });
-    const updatedMessages = await memory.loadMemoryVariables({});
     res.json({ success: true, content: aiResponse });
   } catch (e) {
     console.error("Error:", e);
