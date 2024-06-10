@@ -1,19 +1,15 @@
 import express from "express";
 import { Request, Response } from "express";
-import { getProjects, getProjectCount } from "../databases/mongoDB";
-import mongoose from "mongoose";
-
-const promptSchema = new mongoose.Schema({
-  title: String,
-  type: String,
-  system_prompt: String,
-  main_prompt: String,
-  created_at: { type: Date, default: Date.now },
-});
-
-promptSchema.index({ title: 1, type: 1 }, { unique: true });
-
-const Prompt = mongoose.model("Prompt", promptSchema);
+import {
+  getProjects,
+  getProjectCount,
+  getPrompts,
+  getPromptByTitleAndType,
+  getPromptByTitleTypeAndNotId,
+  createPrompt,
+  updatePrompt,
+  deletePrompt,
+} from "../databases/mongoDB";
 
 const router = express.Router();
 
@@ -52,7 +48,7 @@ router.get("/getPaginated", async (req: Request, res: Response) => {
 
 router.get("/prompts", async (req: Request, res: Response) => {
   try {
-    const prompts = await Prompt.find().sort({ created_at: -1 });
+    const prompts = await getPrompts();
     res.json(prompts);
   } catch (error) {
     console.error("Failed to fetch prompts:", error);
@@ -65,14 +61,12 @@ router.post("/prompts", async (req: Request, res: Response) => {
     const { title, type, system_prompt, main_prompt } = req.body;
 
     // check if a prompt with the same title and type already exists
-    const existingPrompt = await Prompt.findOne({ title, type });
+    const existingPrompt = await getPromptByTitleAndType(title, type);
     if (existingPrompt) {
       console.warn("A prompt with this title and type already exists:", { title, type });
       return res.status(400).json({ error: "A prompt with this title and type already exists" });
     }
-
-    const newPrompt = new Prompt({ title, type, system_prompt, main_prompt });
-    await newPrompt.save();
+    const newPrompt = await createPrompt(title, type, system_prompt, main_prompt);
     console.log("New prompt saved:", newPrompt);
     res.status(201).json(newPrompt);
   } catch (error) {
@@ -86,17 +80,13 @@ router.put("/prompts/:id", async (req: Request, res: Response) => {
     const { id } = req.params;
     const { title, type, system_prompt, main_prompt } = req.body;
 
-    const existingPrompt = await Prompt.findOne({ title, type, _id: { $ne: id } });
+    const existingPrompt = await getPromptByTitleTypeAndNotId(title, type, id);
     if (existingPrompt) {
       console.warn("A prompt with this title and type already exists:", { title, type });
       return res.status(400).json({ error: "A prompt with this title and type already exists" });
     }
 
-    const updatedPrompt = await Prompt.findByIdAndUpdate(
-      id,
-      { title, type, system_prompt, main_prompt },
-      { new: true }
-    );
+    const updatedPrompt = await updatePrompt(id, title, type, system_prompt, main_prompt);
     if (!updatedPrompt) {
       console.warn("Prompt not found for updating:", id);
       return res.status(404).json({ error: "Prompt not found" });
@@ -113,7 +103,7 @@ router.delete("/prompts/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     console.log("Deleting prompt with ID:", id);
-    const deletedPrompt = await Prompt.findByIdAndDelete(id);
+    const deletedPrompt = await deletePrompt(id);
     if (!deletedPrompt) {
       console.warn("Prompt not found for deletion:", id);
       return res.status(404).json({ error: "Prompt not found" });
@@ -127,4 +117,3 @@ router.delete("/prompts/:id", async (req: Request, res: Response) => {
 });
 
 export default router;
-
