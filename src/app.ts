@@ -4,6 +4,8 @@ import cors from "cors";
 import Replicate from "replicate";
 import "dotenv/config";
 import { Request, Response } from "express";
+import formatPrompt from "./utils/formatPrompt";
+import dbRouter from "./routes/mongoAPI";
 import { BufferMemory } from "langchain/memory";
 import { ChatPromptTemplate, MessagesPlaceholder } from "@langchain/core/prompts";
 import { RunnableSequence } from "@langchain/core/runnables";
@@ -18,6 +20,7 @@ const replicate = new Replicate({
 app.use(cors());
 app.use(bodyParser.json());
 
+app.use("/db", dbRouter);
 const memory = new BufferMemory({ returnMessages: true });
 
 const prompt = ChatPromptTemplate.fromMessages([
@@ -28,7 +31,10 @@ const prompt = ChatPromptTemplate.fromMessages([
 
 const chain = RunnableSequence.from([
   { input: (initialInput) => initialInput.input, memory: () => memory.loadMemoryVariables({}) },
-  { input: (previousOutput) => previousOutput.input, history: (previousOutput) => previousOutput.memory.history },
+  {
+    input: (previousOutput) => previousOutput.input,
+    history: (previousOutput) => previousOutput.memory.history,
+  },
   prompt,
 ]);
 
@@ -46,12 +52,14 @@ app.post("/", async (req: Request, res: Response) => {
   // console.log("Past Messages:", pastMessages);
 
   const input = {
-    prompt: `${req.body.systemPrompt}\n\n${(pastMessages.history as MessageType[]).map((msg) => msg.content).join("\n")}\nuser: ${userPrompt}`,
+    prompt: `${req.body.systemPrompt}\n\n${(pastMessages.history as MessageType[])
+      .map((msg) => msg.content)
+      .join("\n")}\nuser: ${userPrompt}`,
   };
 
   try {
     const output = await replicate.run("meta/meta-llama-3-70b-instruct", { input });
-    const aiResponse = Array.isArray(output) ? output.join("") : output; 
+    const aiResponse = Array.isArray(output) ? output.join("") : output;
     await memory.saveContext({ input: userPrompt }, { output: aiResponse });
     const updatedMessages = await memory.loadMemoryVariables({});
     res.json({ success: true, content: aiResponse });
