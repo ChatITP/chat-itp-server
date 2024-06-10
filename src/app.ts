@@ -5,6 +5,7 @@ import Replicate from "replicate";
 import "dotenv/config";
 import { Request, Response } from "express";
 import formatPrompt from "./utils/formatPrompt";
+import dbRouter from "./routes/mongoAPI";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -15,6 +16,8 @@ const replicate = new Replicate({
 
 app.use(cors()); // todo later - allow only specific origins
 app.use(bodyParser.json());
+
+app.use("/db", dbRouter);
 
 app.post("/", async (req: Request, res: Response) => {
   console.log(req.body);

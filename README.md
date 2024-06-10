@@ -1,4 +1,4 @@
-# server
+# ChatITP Server
 
 This repository includes code for the Chat ITP server.
 
@@ -27,9 +27,7 @@ npm start
 
 ## API Endpoints
 
-### /
-
-Method: POST
+### `POST /`
 
 Request Body:
 
@@ -40,8 +38,54 @@ Request Body:
 }
 ```
 
-Fetch example
+Fetch example:
 
 ```js
+fetch("<domain>/", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    systemPrompt: "You are a helpful assistant.",
+    userPrompt: "What is 2 + 2?",
+  }),
+});
+```
 
+Response JSON:
+
+```json
+{
+  "success": true,
+  "content": "The answer to 2 + 2 is 4."
+}
+```
+
+### `GET /db/getPaginated`
+
+Example:
+
+```js
+fetch("<domain>/db/getPaginated?limit=20&offset=10");
+```
+
+#### Queries
+
+**limit**: Number of projects to get
+
+**offset**: The starting index
+
+### `GET /db/projectCount`
+
+Example:
+
+```js
+fetch("<domain>/db/projectCount");
+```
+
+Response JSON:
+
+```json
+{ "count": 50 }
 ```
