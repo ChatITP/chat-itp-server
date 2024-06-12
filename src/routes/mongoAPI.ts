@@ -3,6 +3,9 @@ import { Request, Response } from "express";
 import {
   getProjects,
   getProjectCount,
+  getCleanProjects,
+  getCleanProjectCount,
+  findByIdAndUpdateCleanProject,
   getPrompts,
   getPromptByTitleAndType,
   getPromptByTitleTypeAndNotId,
@@ -10,6 +13,17 @@ import {
   updatePrompt,
   deletePrompt,
 } from "../databases/mongoDB";
+import mongoose from "mongoose";
+
+const promptSchema = new mongoose.Schema({
+  title: String,
+  type: String,
+  system_prompt: String,
+  main_prompt: String,
+  created_at: { type: Date, default: Date.now },
+});
+
+promptSchema.index({ title: 1, type: 1 }, { unique: true });
 
 const router = express.Router();
 
@@ -43,6 +57,60 @@ router.get("/getPaginated", async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Failed to fetch projects:", error);
     res.status(500).json({ error: "Failed to fetch projects" });
+  }
+});
+
+router.get("/cleanProjectCount", async (req: Request, res: Response) => {
+  try {
+    const count = await getCleanProjectCount();
+    console.log("Cleaned project count fetched:", count);
+    res.json({ count });
+  } catch (error) {
+    console.error("Failed to fetch cleaned project count:", error);
+    res.status(500).json({ error: "Failed to fetch cleaned project count" });
+  }
+});
+
+router.get("/getCleanPaginated", async (req: Request, res: Response) => {
+  const limit = parseInt(req.query.limit as string) || 10;
+  const offset = parseInt(req.query.offset as string) || 0;
+
+  if (limit > 50) {
+    return res.status(400).json({ error: "Limit cannot exceed 50" });
+  }
+
+  if (offset < 0) {
+    return res.status(400).json({ error: "Offset cannot be negative" });
+  }
+
+  try {
+    const projects = await getCleanProjects(limit, offset);
+    res.json(projects);
+  } catch (error) {
+    console.error("Failed to fetch cleaned projects:", error);
+    res.status(500).json({ error: "Failed to fetch cleaned projects" });
+  }
+});
+
+router.put("/updateProject/:projectId", async (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const updateData = req.body;
+
+    console.log("Received update request for project ID:", projectId);
+    console.log("Update data:", updateData);
+
+    const updatedProject = await findByIdAndUpdateCleanProject(projectId, updateData);
+
+    if (!updatedProject) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    console.log("Project updated with id: ", updatedProject.project_id);
+    res.json(updatedProject);
+  } catch (error) {
+    console.error("Failed to update project:", error);
+    res.status(500).json({ error: "Failed to update project" });
   }
 });
 
