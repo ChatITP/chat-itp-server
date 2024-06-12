@@ -123,15 +123,29 @@ export const projectSchema = new Schema({
   sustain: String,
   thesis_slides: String,
   thesis_tags: String,
-  venue: [{
-    venue_id: Number,
-    venue_name: String,
-  }],
+  venue: [
+    {
+      venue_id: Number,
+      venue_name: String,
+    },
+  ],
 });
 
+const promptSchema = new mongoose.Schema({
+  title: String,
+  type: String,
+  system_prompt: String,
+  main_prompt: String,
+  created_at: { type: Date, default: Date.now },
+});
+
+promptSchema.index({ title: 1, type: 1 }, { unique: true });
 
 const ProjectModel = mongoose.models.Project || mongoose.model<Project>("Project", projectSchema);
-const SortedCleanProjectModel = mongoose.models.SortedCleanProject || mongoose.model<Project>("SortedCleanProject", projectSchema);
+const SortedCleanProjectModel =
+  mongoose.models.SortedCleanProject ||
+  mongoose.model<Project>("SortedCleanProject", projectSchema);
+const PromptModel = mongoose.models.Prompt || mongoose.model("Prompt", promptSchema);
 
 /**
  * Get a specified number of projects starting starting from the skip index
@@ -155,6 +169,92 @@ async function getProjectCount() {
 }
 
 /**
+ * Get all prompts
+ * @returns - array of prompts
+ */
+async function getPrompts() {
+  const prompts = await PromptModel.find().sort({ created_at: -1 });
+  return prompts;
+}
+
+/**
+ * Get a single prompt by title and type
+ * @param title - title of the prompt
+ * @param type - type of the prompt
+ * @returns - the prompt or null if not found
+ */
+async function getPromptByTitleAndType(title: string, type: string) {
+  const prompt = await PromptModel.findOne({ title, type });
+  return prompt;
+}
+
+/**
+ * Get a single prompt by title and type, that does not have a specified id
+ * @param title - title of the prompt
+ * @param type - type of the prompt
+ * @param id - id to exclude
+ * @returns - the prompt or null if not found
+ */
+async function getPromptByTitleTypeAndNotId(title: string, type: string, id: string) {
+  const prompt = PromptModel.findOne({ title, type, _id: { $ne: id } });
+  return prompt;
+}
+
+/**
+ * Create a new prompt
+ * @param title - title of the prompt
+ * @param type - type of the prompt
+ * @param system_prompt - system prompt
+ * @param main_prompt - main prompt
+ * @returns - the new prompt
+ */
+async function createPrompt(
+  title: string,
+  type: string,
+  system_prompt: string,
+  main_prompt: string
+) {
+  const newPrompt = new PromptModel({ title, type, system_prompt, main_prompt });
+  await newPrompt.save();
+  return newPrompt;
+}
+
+/**
+ * Update a prompt
+ * @param id - id of the prompt
+ * @param title - title of the prompt
+ * @param type - type of the prompt
+ * @param system_prompt - system prompt
+ * @param main_prompt - main prompt
+ * @returns - the updated prompt
+ *
+ */
+async function updatePrompt(
+  id: string,
+  title: string,
+  type: string,
+  system_prompt: string,
+  main_prompt: string
+) {
+  const prompt = await PromptModel.findByIdAndUpdate(
+    id,
+    { title, type, system_prompt, main_prompt },
+    { new: true }
+  );
+  return prompt;
+}
+
+/**
+ * Delete a prompt
+ * @param id - id of the prompt
+ * @returns - the deleted prompt
+ */
+async function deletePrompt(id: string) {
+  const prompt = await PromptModel.findByIdAndDelete(id);
+  return prompt;
+}
+
+/**
  * Get a specified number of projects starting starting from the skip index
  *
  * @param limit - number of projects to get
@@ -175,9 +275,36 @@ async function getCleanProjectCount() {
   return res;
 }
 
-export { getCleanProjects, getCleanProjectCount, getProjects, getProjectCount };
+/**
+ * Find a project by its project_id and update it with the given data.
+ * @param projectId - the project_id of the project to update
+ * @param updateData - the data to update the project with
+ * @returns - the updated project
+ */
+async function findByIdAndUpdateCleanProject(projectId: string, updateData: any) {
+  const updatedProject = await SortedCleanProjectModel.findOneAndUpdate(
+    { project_id: projectId },
+    updateData,
+    { new: true }
+  );
+  return updatedProject;
+}
 
-// script to clean up data 
+export {
+  getCleanProjects,
+  getCleanProjectCount,
+  findByIdAndUpdateCleanProject,
+  getProjects,
+  getProjectCount,
+  getPrompts,
+  getPromptByTitleAndType,
+  getPromptByTitleTypeAndNotId,
+  createPrompt,
+  updatePrompt,
+  deletePrompt,
+};
+
+// script to clean up data
 // const projectModel = mongoose.model<Project>("Project_nd", projectSchema);
 // function cleanString(str: string): string {
 //   return str

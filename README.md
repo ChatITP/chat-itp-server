@@ -89,3 +89,70 @@ Response JSON:
 ```json
 { "count": 50 }
 ```
+
+### `GET /db/prompts`
+
+Example:
+
+```js
+fetch("<domain>/db/prompts");
+```
+
+Example Response JSON:
+
+```json
+{
+  [
+    "title": "The prompt title",
+    "type": "The type of the prompt",
+    "system_prompt": "You are a helpful assistant.",
+    "main_prompt": "What is 2 + 2?",
+    "created_at": <Date Object>,
+  ],
+  ...
+}
+```
+
+### `POST /db/prompts`
+
+Example:
+
+```js
+fetch("<domain>/db/prompts", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    title: "...",
+    type: "...",
+    system_prompt: "You are a helpful assistant.",
+    main_prompt: "What is 2 + 2?",
+  }),
+});
+```
+
+### `PUT /db/prompts/:id`
+
+Example:
+
+```js
+fetch("<domain>/db/prompts/1234", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    title: "...",
+    type: "...",
+    system_prompt: "You are a helpful math assistant.",
+    main_prompt: "What is 2 + 3?",
+  }),
+});
+```
+
+### `DELETE /db/prompts`
+
+```js
+fetch("<domain>/db/prompts/1234");
+```
