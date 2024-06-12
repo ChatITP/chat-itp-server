@@ -1,6 +1,6 @@
 import express from "express";
 import { Request, Response } from "express";
-import { getProjects, getProjectCount } from "../databases/mongoDB";
+import { getProjects, getProjectCount, getCleanProjects, getCleanProjectCount, projectSchema } from "../databases/mongoDB";
 import mongoose from "mongoose";
 
 const promptSchema = new mongoose.Schema({
@@ -14,6 +14,7 @@ const promptSchema = new mongoose.Schema({
 promptSchema.index({ title: 1, type: 1 }, { unique: true });
 
 const Prompt = mongoose.model("Prompt", promptSchema);
+const SortedCleanProject = mongoose.model("SortedCleanProject", projectSchema);
 
 const router = express.Router();
 
@@ -49,6 +50,66 @@ router.get("/getPaginated", async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to fetch projects" });
   }
 });
+
+router.get("/cleanProjectCount", async (req: Request, res: Response) => {
+  try {
+    const count = await getCleanProjectCount();
+    console.log("Cleaned project count fetched:", count);
+    res.json({ count });
+  } catch (error) {
+    console.error("Failed to fetch cleaned project count:", error);
+    res.status(500).json({ error: "Failed to fetch cleaned project count" });
+  }
+});
+
+router.get("/getCleanPaginated", async (req: Request, res: Response) => {
+  const limit = parseInt(req.query.limit as string) || 10;
+  const offset = parseInt(req.query.offset as string) || 0;
+
+  if (limit > 50) {
+    return res.status(400).json({ error: "Limit cannot exceed 50" });
+  }
+
+  if (offset < 0) {
+    return res.status(400).json({ error: "Offset cannot be negative" });
+  }
+
+  try {
+    const projects = await getCleanProjects(limit, offset);
+    res.json(projects);
+  } catch (error) {
+    console.error("Failed to fetch cleaned projects:", error);
+    res.status(500).json({ error: "Failed to fetch cleaned projects" });
+  }
+});
+
+router.put("/updateProject/:projectId", async (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const updateData = req.body;
+
+    console.log("Received update request for project ID:", projectId);
+    console.log("Update data:", updateData);
+
+    const updatedProject = await SortedCleanProject.findOneAndUpdate(
+      { project_id: projectId },
+      updateData,
+      { new: true }
+    );
+
+    if (!updatedProject) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    console.log("Project updated with id: ", updatedProject.project_id);
+    res.json(updatedProject);
+  } catch (error) {
+    console.error("Failed to update project:", error);
+    res.status(500).json({ error: "Failed to update project" });
+  }
+});
+
+
 
 router.get("/prompts", async (req: Request, res: Response) => {
   try {
