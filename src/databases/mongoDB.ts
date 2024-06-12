@@ -132,7 +132,6 @@ export const projectSchema = new Schema({
 
 const ProjectModel = mongoose.models.Project || mongoose.model<Project>("Project", projectSchema);
 const SortedCleanProjectModel = mongoose.models.SortedCleanProject || mongoose.model<Project>("SortedCleanProject", projectSchema);
-const CleanProjectModel = mongoose.models.CleanProject || mongoose.model<Project>("CleanProject", projectSchema);
 
 /**
  * Get a specified number of projects starting starting from the skip index
@@ -155,11 +154,22 @@ async function getProjectCount() {
   return res;
 }
 
+/**
+ * Get a specified number of projects starting starting from the skip index
+ *
+ * @param limit - number of projects to get
+ * @param offset - index to start from
+ * @returns - array of projects
+ */
 async function getCleanProjects(limit: number, offset: number) {
   const res = await SortedCleanProjectModel.find({}, null, { limit, skip: offset });
   return res;
 }
 
+/**
+ * Get the total number of projects
+ * @returns - number of projects
+ */
 async function getCleanProjectCount() {
   const res = await SortedCleanProjectModel.countDocuments();
   return res;
@@ -167,7 +177,7 @@ async function getCleanProjectCount() {
 
 export { getCleanProjects, getCleanProjectCount, getProjects, getProjectCount };
 
-
+// script to clean up data 
 // const projectModel = mongoose.model<Project>("Project_nd", projectSchema);
 // function cleanString(str: string): string {
 //   return str
