@@ -13,17 +13,6 @@ import {
   updatePrompt,
   deletePrompt,
 } from "../databases/mongoDB";
-import mongoose from "mongoose";
-
-const promptSchema = new mongoose.Schema({
-  title: String,
-  type: String,
-  system_prompt: String,
-  main_prompt: String,
-  created_at: { type: Date, default: Date.now },
-});
-
-promptSchema.index({ title: 1, type: 1 }, { unique: true });
 
 const router = express.Router();
 

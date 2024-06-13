@@ -1,12 +1,15 @@
-import { BufferMemory } from "langchain/memory";
 import Replicate from "replicate";
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
 
-const memory = new BufferMemory({ returnMessages: true });
-let initialSystemPrompt = "";
+type MessageType = {
+  content: string;
+  role: string;
+};
+
+let messageMemory: MessageType[] = [];
 
 /**
  * Initialize the AI with a system prompt.
@@ -14,9 +17,8 @@ let initialSystemPrompt = "";
  * @todo Make this Restful and stateless
  */
 async function initialize(systemPrompt: string) {
-  memory.clear();
-  await memory.saveContext({ input: "initialization" }, { output: systemPrompt });
-  initialSystemPrompt = systemPrompt;
+  messageMemory = [];
+  messageMemory.push({ content: systemPrompt, role: "system" });
 }
 
 /**
@@ -25,20 +27,23 @@ async function initialize(systemPrompt: string) {
  * @todo Make this Restful and stateless
  */
 async function generate(userPrompt: string) {
-  const pastMessages = await memory.loadMemoryVariables({});
-  type MessageType = {
-    content: string;
-  };
+  const systemPromptAndHistory = messageMemory
+    .map((msg) => `<|start_header_id|>${msg.role}<|end_header_id|>\n\n${msg.content}<|eot_id|>`)
+    .join("");
+
+  const newUserPrompt = `<|start_header_id|>user<|end_header_id|>\n\n${userPrompt}<|eot_id|>`;
 
   const input = {
-    prompt: `${initialSystemPrompt}\n\n${(pastMessages.history as MessageType[])
-      .map((msg) => msg.content)
-      .join("\n")}\nuser: ${userPrompt}`,
+    prompt: `<|begin_of_text|>${systemPromptAndHistory}${newUserPrompt}<|start_header_id|>assistant<|end_header_id|>`,
   };
 
-  const output = await replicate.run("meta/meta-llama-3-70b-instruct", { input });
-  const aiResponse = Array.isArray(output) ? output.join("") : output;
-  await memory.saveContext({ input: userPrompt }, { output: aiResponse });
+  const output = (await replicate.run("meta/meta-llama-3-70b-instruct", { input })) as string[];
+  const aiResponse = output.join("");
+
+  messageMemory.push({ content: userPrompt, role: "user" });
+  messageMemory.push({ content: aiResponse, role: "assistant" });
+
+  return aiResponse;
 }
 
 export { initialize, generate };
