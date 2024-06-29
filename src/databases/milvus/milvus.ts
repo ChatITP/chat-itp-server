@@ -1,5 +1,5 @@
 import { MilvusClient } from "@zilliz/milvus2-sdk-node";
-import generateEmbedding from "../llm/generateEmbedding";
+import generateEmbedding from "../../llm/generateEmbedding";
 
 if (!process.env.MILVUS_HOST) {
   throw new Error("MILVUS_HOST is not set");
