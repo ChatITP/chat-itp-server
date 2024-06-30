@@ -3,6 +3,7 @@ import "dotenv/config";
 
 import * as projects from "./projects";
 import * as prompts from "./prompts";
+import * as users from "./users";
 
 if (!process.env.MONGO_URI) {
   console.error("MongoDB URI not set.");
@@ -19,4 +20,4 @@ async function connect() {
 
 connect();
 
-export { projects, prompts };
+export { projects, prompts, users };

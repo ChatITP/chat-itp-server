@@ -6,6 +6,8 @@ import cors from "cors";
 
 import dbRouter from "./routes/mongoAPI";
 import llmRouter from "./routes/llmAPI";
+import userRouter from "./routes/userAPI";
+import authenticateToken from "./middlewares/authenticateToken";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -15,8 +17,9 @@ app.use(bodyParser.json());
 
 app.use("/db", dbRouter);
 app.use("/llm", llmRouter);
+app.use("/user", userRouter);
 
-app.get("/", (req: Request, res: Response) => {
+app.get("/", authenticateToken, (req: Request, res: Response) => {
   res.send("Chat ITP server is running!");
 });
 

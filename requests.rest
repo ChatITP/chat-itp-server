@@ -1,0 +1,22 @@
+POST http://localhost:3001/user/login
+Content-Type: application/json
+
+{
+  "email": "ziyuanlin05@gmail.com",
+  "password": "123456"
+}
+
+###
+POST http://localhost:3001/user/register
+Content-Type: application/json
+
+{
+  "email": "ziyuanlin05@gmail.com",
+  "password": "123456",
+  "name": "Ziyuan Lin"
+}
+
+###
+get http://localhost:3001
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InppeXVhbmxpbjA1QGdtYWlsLmNvbSIsImlhdCI6MTcxOTcxNTg1Mn0.xxo-Nnf0bcJN4vGC6txgplTRoPgBksTreTFJ_idBC64
