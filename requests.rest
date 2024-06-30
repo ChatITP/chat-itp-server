@@ -11,9 +11,10 @@ POST http://localhost:3001/user/register
 Content-Type: application/json
 
 {
-  "email": "ziyuanlin05@gmail.com",
+  "email": "zl4140@nyu.edu",
   "password": "123456",
-  "name": "Ziyuan Lin"
+  "name": "Ziyuan Lin",
+  "accessToken": "69f3e6e3a6d7bcbafe2f4e15fcf94edd"
 }
 
 ###
