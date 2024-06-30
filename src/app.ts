@@ -15,11 +15,11 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(bodyParser.json());
 
-app.use("/db", dbRouter);
-app.use("/llm", llmRouter);
+app.use("/db", authenticateToken, dbRouter);
+app.use("/llm", authenticateToken, llmRouter);
 app.use("/user", userRouter);
 
-app.get("/", authenticateToken, (req: Request, res: Response) => {
+app.get("/", (req: Request, res: Response) => {
   res.send("Chat ITP server is running!");
 });
 

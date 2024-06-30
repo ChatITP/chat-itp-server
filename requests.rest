@@ -2,7 +2,7 @@ POST http://localhost:3001/user/login
 Content-Type: application/json
 
 {
-  "email": "ziyuanlin05@gmail.com",
+  "email": "abc@gmail.com",
   "password": "123456"
 }
 
@@ -11,13 +11,22 @@ POST http://localhost:3001/user/register
 Content-Type: application/json
 
 {
-  "email": "zl4140@nyu.edu",
-  "password": "123456",
-  "name": "Ziyuan Lin",
-  "accessToken": "69f3e6e3a6d7bcbafe2f4e15fcf94edd"
+  "email": "neumann@gmail.com",
+  "password": "xxxxx",
+  "name": "John von Neumann",
+  "earlyAccessCode": "9b18e3152fe15eaba2310ddf574d8d04"
 }
 
 ###
-get http://localhost:3001
+POST http://localhost:3001/user/refresh
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InppeXVhbmxpbjA1QGdtYWlsLmNvbSIsImlhdCI6MTcxOTcxNTg1Mn0.xxo-Nnf0bcJN4vGC6txgplTRoPgBksTreTFJ_idBC64
+
+{
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFiY0BnbWFpbC5jb20iLCJpYXQiOjE3MTk3ODY5Nzh9.X11YdVpKnDzjXjkoaxqSwGocrc9fBTAYvDjuO7lZtBQ"
+}
+
+###
+get http://localhost:3001/db/projectCount
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFiY0BnbWFpbC5jb20iLCJpYXQiOjE3MTk3ODcwMzksImV4cCI6MTcxOTc4NzA1OX0.f8-hP8wpAPr2y1_Q9rQZ6W3vfxFTgHsTlxWDsOHGFfw
+

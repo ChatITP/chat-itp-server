@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import jwt = require("jsonwebtoken");
+import { verifyAccessToken } from "../auth/jwt";
 
 declare module "express-serve-static-core" {
   interface Request {
@@ -16,10 +16,8 @@ function authenticateToken(req: Request, res: Response, next: NextFunction) {
 
   const token = authHeader.split(" ")[1];
 
-  let user;
-  try {
-    user = jwt.verify(token, process.env.JWT_ACCESS_SECRET as string);
-  } catch (error) {
+  const user = verifyAccessToken(token);
+  if (user === null) {
     res.status(403).json({ success: false, error: "Forbidden" });
     return;
   }
