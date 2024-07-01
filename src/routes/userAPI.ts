@@ -54,7 +54,7 @@ router.post("/login", async (req: Request, res: Response) => {
       res.cookie("accessToken", accessToken, { httpOnly: true });
       res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
-        path: "/user/refresh",
+        path: "/user",
       });
 
       // Save the refresh token
@@ -71,7 +71,6 @@ router.post("/login", async (req: Request, res: Response) => {
 
 router.post("/refresh", async (req: Request, res: Response) => {
   const refreshToken = req.cookies.refreshToken;
-  console.log(refreshToken);
   if (!refreshToken) {
     res.status(401).json({ success: false, error: "No refresh token" });
     return;
@@ -86,6 +85,7 @@ router.post("/refresh", async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Failed to refresh token:", error);
     res.status(500).json({ error: "Failed to validate refresh token" });
+    return;
   }
 
   const user = verifyRefreshToken(refreshToken);
@@ -95,6 +95,26 @@ router.post("/refresh", async (req: Request, res: Response) => {
   }
   const accessToken = generateAccessToken(user.email);
   res.cookie("accessToken", accessToken, { httpOnly: true });
+  res.status(200).json({ success: true });
+});
+
+router.post("/logout", async (req: Request, res: Response) => {
+  const refreshToken = req.cookies.refreshToken;
+  try {
+    const refreshTokenObject = await refreshTokens.findOne(refreshToken);
+    console.log(refreshTokenObject);
+    if (refreshTokenObject) {
+      await refreshTokens.remove(refreshTokenObject._id);
+    }
+  } catch (error) {
+    console.error("Failed to logout user:", error);
+    res.status(500).json({ error: "Failed to logout user" });
+    return;
+  }
+
+  res.clearCookie("accessToken");
+  res.clearCookie("refreshToken");
+
   res.status(200).json({ success: true });
 });
 

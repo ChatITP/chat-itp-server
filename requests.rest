@@ -1,4 +1,4 @@
-POST http://localhost:3001/user/login
+POST http://localhost:3001/user/login HTTP/1.1
 Content-Type: application/json
 
 {
@@ -7,7 +7,10 @@ Content-Type: application/json
 }
 
 ###
-POST http://localhost:3001/user/register
+POST http://localhost:3001/user/logout HTTP/1.1
+
+###
+POST http://localhost:3001/user/register HTTP/1.1
 Content-Type: application/json
 
 {
@@ -18,8 +21,7 @@ Content-Type: application/json
 }
 
 ###
-POST http://localhost:3001/user/refresh
+POST http://localhost:3001/user/refresh HTTP/1.1
 
 ###
-get http://localhost:3001/db/projectCount
-
+get http://localhost:3001/db/projectCount HTTP/1.1
