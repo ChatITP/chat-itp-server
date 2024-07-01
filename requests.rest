@@ -19,14 +19,7 @@ Content-Type: application/json
 
 ###
 POST http://localhost:3001/user/refresh
-Content-Type: application/json
-
-{
-  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFiY0BnbWFpbC5jb20iLCJpYXQiOjE3MTk3ODY5Nzh9.X11YdVpKnDzjXjkoaxqSwGocrc9fBTAYvDjuO7lZtBQ"
-}
 
 ###
 get http://localhost:3001/db/projectCount
-Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFiY0BnbWFpbC5jb20iLCJpYXQiOjE3MTk3ODcwMzksImV4cCI6MTcxOTc4NzA1OX0.f8-hP8wpAPr2y1_Q9rQZ6W3vfxFTgHsTlxWDsOHGFfw
 

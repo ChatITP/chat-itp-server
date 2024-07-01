@@ -51,7 +51,15 @@ router.post("/login", async (req: Request, res: Response) => {
       const accessToken = generateAccessToken(email);
       const refreshToken = generateRefreshToken(email);
 
-      res.status(200).json({ success: true, accessToken, refreshToken });
+      res.cookie("accessToken", accessToken, { httpOnly: true });
+      res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        path: "/user/refresh",
+      });
+
+      // Save the refresh token
+      refreshTokens.create(refreshToken);
+      res.status(200).json({ success: true });
     } else {
       res.status(401).json({ success: false, error: "Invalid email or password" });
     }
@@ -62,21 +70,22 @@ router.post("/login", async (req: Request, res: Response) => {
 });
 
 router.post("/refresh", async (req: Request, res: Response) => {
-  const { refreshToken } = req.body;
+  const refreshToken = req.cookies.refreshToken;
+  console.log(refreshToken);
   if (!refreshToken) {
-    res.status(400).json({ success: false, error: "Invalid request" });
+    res.status(401).json({ success: false, error: "No refresh token" });
     return;
   }
 
   try {
-    const refreshTokenObject = refreshTokens.findOne(refreshToken);
+    const refreshTokenObject = await refreshTokens.findOne(refreshToken);
     if (!refreshTokenObject) {
       res.status(403).json({ success: false, error: "Invalid refresh token" });
       return;
     }
   } catch (error) {
     console.error("Failed to refresh token:", error);
-    res.status(500).json({ error: "Failed to refresh token" });
+    res.status(500).json({ error: "Failed to validate refresh token" });
   }
 
   const user = verifyRefreshToken(refreshToken);
@@ -84,9 +93,9 @@ router.post("/refresh", async (req: Request, res: Response) => {
     res.status(403).json({ success: false, error: "Invalid refresh token" });
     return;
   }
-
   const accessToken = generateAccessToken(user.email);
-  res.status(200).json({ success: true, accessToken });
+  res.cookie("accessToken", accessToken, { httpOnly: true });
+  res.status(200).json({ success: true });
 });
 
 export default router;

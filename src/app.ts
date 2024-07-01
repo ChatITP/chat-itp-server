@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import { Request, Response } from "express";
 import bodyParser from "body-parser";
+import cookieParser from "cookie-parser";
 import cors from "cors";
 
 import dbRouter from "./routes/mongoAPI";
@@ -14,6 +15,7 @@ const port = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(bodyParser.json());
+app.use(cookieParser());
 
 app.use("/db", authenticateToken, dbRouter);
 app.use("/llm", authenticateToken, llmRouter);

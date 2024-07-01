@@ -8,17 +8,15 @@ declare module "express-serve-static-core" {
 }
 
 function authenticateToken(req: Request, res: Response, next: NextFunction) {
-  if (!req.get("Authorization")) {
-    res.status(401).json({ success: false, error: "Unauthorized" });
+  const accessToken = req.cookies.accessToken;
+  if (!accessToken) {
+    res.status(401).json({ success: false, error: "No access token" });
     return;
   }
-  const authHeader = req.get("Authorization") as string;
 
-  const token = authHeader.split(" ")[1];
-
-  const user = verifyAccessToken(token);
+  const user = verifyAccessToken(accessToken);
   if (user === null) {
-    res.status(403).json({ success: false, error: "Forbidden" });
+    res.status(403).json({ success: false, error: "Access token invalid" });
     return;
   }
   req.user = user;
