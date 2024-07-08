@@ -5,7 +5,8 @@ import {
   generate,
   saveChatSession,
   loadChatSession,
-  getAllSessionIds
+  getAllSessionIds,
+  initializeWithMessages
 } from "../llm/replicateLlama3";
 
 const router = express.Router();
@@ -23,6 +24,27 @@ router.post("/initialize", async (req: Request, res: Response) => {
   }
   await initialize(systemPrompt);
   res.json({ success: true });
+});
+
+/**
+ * POST /initialize-with-messages
+ * Initialize the system with a series of messages.
+ * @param {MessageType[]} messages - An array of messages to initialize the chat session.
+ * @returns {object} - JSON response indicating success or failure.
+ */
+router.post("/initialize-with-messages", async (req: Request, res: Response) => {
+  const { messages } = req.body;
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return res.status(400).json({ success: false, error: "Invalid request. Messages array is required." });
+  }
+
+  try {
+    await initializeWithMessages(messages);
+    res.json({ success: true });
+  } catch (e) {
+    console.error("Error initializing with messages:", e);
+    res.status(500).json({ success: false, error: "Failed to initialize with messages." });
+  }
 });
 
 /**

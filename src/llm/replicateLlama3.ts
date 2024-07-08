@@ -191,4 +191,4 @@ async function loadChatSession(sessionId: string) {
   }
 }
 
-export { initialize, generate, saveChatSession, loadChatSession, getAllSessionIds };
+export { initialize, generate, saveChatSession, loadChatSession, getAllSessionIds, initializeWithMessages };
