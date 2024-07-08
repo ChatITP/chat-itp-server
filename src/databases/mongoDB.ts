@@ -16,6 +16,30 @@ async function connect() {
 
 connect();
 
+interface Message {
+  content: string;
+  role: string;
+}
+
+interface ChatSession extends Document {
+  sessionId: string;
+  messages: Message[];
+  createdAt: Date;
+}
+
+const messageSchema = new Schema({
+  content: String,
+  role: String,
+});
+
+const chatSessionSchema = new Schema({
+  sessionId: { type: String, required: true, unique: true },
+  messages: [messageSchema],
+  createdAt: { type: Date, default: Date.now },
+});
+
+const ChatSessionModel = mongoose.models.ChatSession || mongoose.model<ChatSession>("ChatSession", chatSessionSchema);
+
 interface User {
   designated: number;
   user_name: string;
@@ -261,8 +285,9 @@ async function deletePrompt(id: string) {
  * @param offset - index to start from
  * @returns - array of projects
  */
-async function getCleanProjects(limit: number, offset: number) {
-  const res = await SortedCleanProjectModel.find({}, null, { limit, skip: offset });
+async function getCleanProjects(limit: number, offset: number, searchQuery: string | null = null) {
+  const filter = searchQuery ? { project_name: { $regex: searchQuery, $options: 'i' } } : {};
+  const res = await SortedCleanProjectModel.find(filter, null, { limit, skip: offset });
   return res;
 }
 
@@ -291,6 +316,7 @@ async function findByIdAndUpdateCleanProject(projectId: string, updateData: any)
 }
 
 export {
+  ChatSessionModel, 
   getCleanProjects,
   getCleanProjectCount,
   findByIdAndUpdateCleanProject,
