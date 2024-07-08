@@ -51,7 +51,7 @@ router.post("/login", async (req: Request, res: Response) => {
       const accessToken = generateAccessToken(email);
       const refreshToken = generateRefreshToken(email);
 
-      res.cookie("accessToken", accessToken, { httpOnly: true });
+      res.cookie("accessToken", accessToken, { httpOnly: true, path: "/" });
       res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
         path: "/user",
@@ -94,7 +94,7 @@ router.post("/refresh", async (req: Request, res: Response) => {
     return;
   }
   const accessToken = generateAccessToken(user.email);
-  res.cookie("accessToken", accessToken, { httpOnly: true });
+  res.cookie("accessToken", accessToken, { httpOnly: true, path: "/" });
   res.status(200).json({ success: true });
 });
 
