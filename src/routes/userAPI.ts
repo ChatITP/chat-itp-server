@@ -1,7 +1,12 @@
 import express from "express";
 import { Request, Response } from "express";
 import { users, earlyAccessCodes, refreshTokens } from "../databases/mongoDB";
-import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "../auth/jwt";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  verifyAccessToken,
+  verifyRefreshToken,
+} from "../auth/jwt";
 
 const router = express.Router();
 
@@ -116,6 +121,22 @@ router.post("/logout", async (req: Request, res: Response) => {
   res.clearCookie("refreshToken");
 
   res.status(200).json({ success: true });
+});
+
+router.get("/verify", async (req: Request, res: Response) => {
+  const accessToken = req.cookies.accessToken;
+  if (!accessToken) {
+    res.status(401).json({ success: false, error: "No access token" });
+    return;
+  }
+
+  const user = verifyAccessToken(accessToken);
+  if (!user) {
+    res.status(403).json({ success: false, error: "Invalid access token" });
+    return;
+  }
+
+  res.status(200).json({ success: true, email: user.email });
 });
 
 export default router;
