@@ -46,7 +46,7 @@ async function searchProjects(queryVector: number[], limit: number = 1) {
  * @param limit - The number of results to return
  * @returns - The search result
  */
-async function searchProjectsByText(text: string, limit: number = 1) {
+async function searchProjectsByText(text: string, limit: number = 5) {
   const embedding = await generateEmbedding(text);
   const result = await searchProjects(embedding, limit);
   return result;
