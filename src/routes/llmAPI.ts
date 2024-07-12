@@ -6,7 +6,8 @@ import {
   saveChatSession,
   loadChatSession,
   getAllSessionIds,
-  initializeWithMessages
+  initializeWithMessages,
+  generateSuggestions
 } from "../llm/replicateLlama3";
 
 const router = express.Router();
@@ -44,6 +45,17 @@ router.post("/initialize-with-messages", async (req: Request, res: Response) => 
   } catch (e) {
     console.error("Error initializing with messages:", e);
     res.status(500).json({ success: false, error: "Failed to initialize with messages." });
+  }
+});
+
+
+router.post('/suggestions', async (req, res) => {
+  try {
+    const { selectedBlocks } = req.body;
+    const suggestions = await generateSuggestions(selectedBlocks);
+    res.json(suggestions);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to generate suggestions' });
   }
 });
 
