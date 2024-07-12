@@ -63,6 +63,7 @@ router.get("/cleanProjectCount", async (req: Request, res: Response) => {
 router.get("/getCleanPaginated", async (req: Request, res: Response) => {
   const limit = parseInt(req.query.limit as string) || 10;
   const offset = parseInt(req.query.offset as string) || 0;
+  const searchQuery = req.query.search as string || null;
 
   if (limit > 50) {
     return res.status(400).json({ error: "Limit cannot exceed 50" });
@@ -73,7 +74,7 @@ router.get("/getCleanPaginated", async (req: Request, res: Response) => {
   }
 
   try {
-    const projects = await getCleanProjects(limit, offset);
+    const projects = await getCleanProjects(limit, offset, searchQuery);
     res.json(projects);
   } catch (error) {
     console.error("Failed to fetch cleaned projects:", error);
