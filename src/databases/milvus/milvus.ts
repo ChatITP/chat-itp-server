@@ -31,7 +31,7 @@ connect();
  * @param limit - The number of results to return
  * @returns - The search result
  */
-async function searchProjects(queryVector: number[], limit: number = 3) {
+async function searchProjects(queryVector: number[], limit: number = 1) {
   const res = await client.search({
     collection_name: "projects",
     data: [queryVector],
@@ -46,7 +46,7 @@ async function searchProjects(queryVector: number[], limit: number = 3) {
  * @param limit - The number of results to return
  * @returns - The search result
  */
-async function searchProjectsByText(text: string, limit: number = 3) {
+async function searchProjectsByText(text: string, limit: number = 5) {
   const embedding = await generateEmbedding(text);
   const result = await searchProjects(embedding, limit);
   return result;
