@@ -33,9 +33,13 @@ const messageSchema = new Schema({
 });
 
 const chatSessionSchema = new Schema({
-  sessionId: { type: String, required: true, unique: true },
-  messages: [messageSchema],
-  createdAt: { type: Date, default: Date.now },
+  sessionId: String,
+  messages: [{ content: String, role: String }],
+  state: {
+    discussedProjects: [String],
+    keyTopics: [String],
+    interactionCount: Number
+  }
 });
 
 const ChatSessionModel = mongoose.models.ChatSession || mongoose.model<ChatSession>("ChatSession", chatSessionSchema);
