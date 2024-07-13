@@ -148,8 +148,10 @@ async function countRaw() {
  * @param offset - index to start from
  * @returns - array of projects
  */
-async function get(limit: number, offset: number) {
-  const res = await SortedCleanProjectModel.find({}, null, { limit, skip: offset });
+async function get(limit: number, offset: number, searchQuery: string | null = null) {
+  const filter = searchQuery ? { project_name: { $regex: searchQuery, $options: 'i' } } : {};
+
+  const res = await SortedCleanProjectModel.find(filter, null, { limit, skip: offset });
   return res;
 }
 

@@ -6,6 +6,7 @@ import * as prompts from "./prompts";
 import * as users from "./users";
 import * as earlyAccessCodes from "./earlyAccessCode";
 import * as refreshTokens from "./refreshToken";
+import { ChatSessionModel } from "./chatSessions";
 
 if (!process.env.MONGO_URI) {
   console.error("MongoDB URI not set.");
@@ -22,4 +23,4 @@ async function connect() {
 
 connect();
 
-export { projects, prompts, users, earlyAccessCodes, refreshTokens };
+export { projects, prompts, users, earlyAccessCodes, refreshTokens, ChatSessionModel };

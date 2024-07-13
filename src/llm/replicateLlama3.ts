@@ -6,9 +6,9 @@ import {
   getMessageMemory,
   addMessage,
   clearMessageMemory,
-  MessageType
+  MessageType,
 } from "./sessions";
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from "uuid";
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
@@ -27,7 +27,7 @@ type ConversationState = {
 let state: ConversationState = {
   discussedProjects: new Set<string>(),
   keyTopics: [],
-  interactionCount: 0
+  interactionCount: 0,
 };
 
 /**
@@ -39,7 +39,7 @@ async function initialize(systemPrompt: string) {
   state = {
     discussedProjects: new Set<string>(),
     keyTopics: [],
-    interactionCount: 0
+    interactionCount: 0,
   };
 }
 
@@ -65,33 +65,35 @@ async function rebuildState(messages: MessageType[]) {
   state = {
     discussedProjects: new Set<string>(),
     keyTopics: [],
-    interactionCount: messages.length
+    interactionCount: messages.length,
   };
-  
+
   const stateRebuildPrompt = `
   Analyze the following conversation and extract:
   1. A list of all discussed projects
   2. Key topics of the conversation
 
   Conversation:
-  ${messages.map(m => `${m.role}: ${m.content}`).join('\n')}
+  ${messages.map((m) => `${m.role}: ${m.content}`).join("\n")}
 
   Respond in the following format:
   Projects: [list of projects]
   Topics: [list of key topics]
   `;
 
-  const output = await replicate.run("meta/meta-llama-3-70b-instruct", { input: { prompt: stateRebuildPrompt } }) as string[];
-  const result = output.join('').trim();
+  const output = (await replicate.run("meta/meta-llama-3-70b-instruct", {
+    input: { prompt: stateRebuildPrompt },
+  })) as string[];
+  const result = output.join("").trim();
 
   const projectsMatch = result.match(/Projects: (.*)/);
   const topicsMatch = result.match(/Topics: (.*)/);
 
   if (projectsMatch) {
-    projectsMatch[1].split(',').forEach(project => state.discussedProjects.add(project.trim()));
+    projectsMatch[1].split(",").forEach((project) => state.discussedProjects.add(project.trim()));
   }
   if (topicsMatch) {
-    state.keyTopics = topicsMatch[1].split(',').map(topic => topic.trim());
+    state.keyTopics = topicsMatch[1].split(",").map((topic) => topic.trim());
   }
 }
 
@@ -101,8 +103,8 @@ async function rebuildState(messages: MessageType[]) {
  * @returns {Promise<string>} - A promise that resolves to the summary string.
  */
 async function summarizeConversation(messages: MessageType[]): Promise<string> {
-  const conversationText = messages.map(msg => `${msg.role}: ${msg.content}`).join("\n");
-  
+  const conversationText = messages.map((msg) => `${msg.role}: ${msg.content}`).join("\n");
+
   const summarizationPrompt = `
   Summarize the following conversation, focusing on key points, context, and maintaining a coherent narrative. 
   Ensure to capture:
@@ -118,7 +120,9 @@ async function summarizeConversation(messages: MessageType[]): Promise<string> {
   Summary:`;
 
   try {
-    const output = await replicate.run("meta/meta-llama-3-70b-instruct", { input: { prompt: summarizationPrompt } }) as string[];
+    const output = (await replicate.run("meta/meta-llama-3-70b-instruct", {
+      input: { prompt: summarizationPrompt },
+    })) as string[];
     return output.join("").trim();
   } catch (error) {
     console.error("Error summarizing conversation:", error);
@@ -141,9 +145,11 @@ async function generate(userPrompt: string): Promise<string> {
     if (fullHistory.length > SUMMARIZE_THRESHOLD) {
       const olderMessages = fullHistory.slice(0, -MAX_FULL_HISTORY);
       const recentMessages = fullHistory.slice(-MAX_FULL_HISTORY);
-      
+
       const summary = await summarizeConversation(olderMessages);
-      context = `Summary of earlier conversation:\n${summary}\n\nRecent messages:\n${formatMessages(recentMessages)}`;
+      context = `Summary of earlier conversation:\n${summary}\n\nRecent messages:\n${formatMessages(
+        recentMessages
+      )}`;
     } else {
       context = formatMessages(fullHistory);
     }
@@ -161,18 +167,20 @@ async function generate(userPrompt: string): Promise<string> {
 
     user: ${userPrompt}
 
-    ${relevantProjectsText ? `Relevant project information:\n${relevantProjectsText}\n` : ''}
+    ${relevantProjectsText ? `Relevant project information:\n${relevantProjectsText}\n` : ""}
 
     Please provide a response that directly addresses the user's query. If project information is available, incorporate it into your answer. Ensure you're not repeating information about projects already discussed unless specifically asked to do so.
 
     assistant:`;
 
-    const output = await replicate.run("meta/meta-llama-3-70b-instruct", { input: { prompt: inputPrompt } });
-    
+    const output = await replicate.run("meta/meta-llama-3-70b-instruct", {
+      input: { prompt: inputPrompt },
+    });
+
     let aiResponse: string;
     if (Array.isArray(output)) {
       aiResponse = output.join("");
-    } else if (typeof output === 'string') {
+    } else if (typeof output === "string") {
       aiResponse = output;
     } else {
       throw new Error("Unexpected output format from Replicate API");
@@ -209,17 +217,21 @@ async function fetchRelevantProjects(userPrompt: string): Promise<string> {
   Query: ${userPrompt}
   Answer:`;
 
-  const intentOutput = await replicate.run("meta/meta-llama-3-70b-instruct", { input: { prompt: intentClassificationPrompt } }) as string[];
-  const intentResult = intentOutput.join('').replace(/\n/g, '').trim().toUpperCase();
+  const intentOutput = (await replicate.run("meta/meta-llama-3-70b-instruct", {
+    input: { prompt: intentClassificationPrompt },
+  })) as string[];
+  const intentResult = intentOutput.join("").replace(/\n/g, "").trim().toUpperCase();
 
   let relevantProjectsText = "";
-  if (intentResult.includes('YES_RANDOM') || intentResult.includes('YES_SPECIFIC')) {
-    if (intentResult.includes('YES_RANDOM')) {
+  if (intentResult.includes("YES_RANDOM") || intentResult.includes("YES_SPECIFIC")) {
+    if (intentResult.includes("YES_RANDOM")) {
       const uniqueProject = await getUniqueProject();
       relevantProjectsText = uniqueProject.text;
     } else {
       const searchResults = await searchProjectsByText(userPrompt, 5);
-      const uniqueResults = searchResults.filter(result => !state.discussedProjects.has(result.id));
+      const uniqueResults = searchResults.filter(
+        (result) => !state.discussedProjects.has(result.id)
+      );
       if (uniqueResults.length > 0) {
         const selectedResult = uniqueResults[Math.floor(Math.random() * uniqueResults.length)];
         state.discussedProjects.add(selectedResult.id);
@@ -239,7 +251,7 @@ async function fetchRelevantProjects(userPrompt: string): Promise<string> {
  * @returns {string} - A formatted string representation of the messages.
  */
 function formatMessages(messages: MessageType[]): string {
-  return messages.map(msg => `${msg.role}: ${msg.content}`).join("\n");
+  return messages.map((msg) => `${msg.role}: ${msg.content}`).join("\n");
 }
 
 /**
@@ -265,8 +277,8 @@ async function getUniqueProject(): Promise<any> {
  */
 async function getRandomProject(): Promise<any> {
   const projects = await searchProjectsByText("project", 10);
-  const availableProjects = projects.filter(p => !state.discussedProjects.has(p.id));
-  
+  const availableProjects = projects.filter((p) => !state.discussedProjects.has(p.id));
+
   if (availableProjects.length === 0) {
     state.discussedProjects.clear();
     return getRandomProject();
@@ -294,22 +306,25 @@ function updateState(response: string) {
   Topics: [list of key topics]
   `;
 
-  replicate.run("meta/meta-llama-3-70b-instruct", { input: { prompt: updateStatePrompt } })
+  replicate
+    .run("meta/meta-llama-3-70b-instruct", { input: { prompt: updateStatePrompt } })
     .then((output: unknown) => {
-      const result = Array.isArray(output) ? output.join('').trim() : String(output).trim();
+      const result = Array.isArray(output) ? output.join("").trim() : String(output).trim();
 
       const projectsMatch = result.match(/New Projects: (.*)/);
       const topicsMatch = result.match(/Topics: (.*)/);
 
       if (projectsMatch) {
-        projectsMatch[1].split(',').forEach(project => state.discussedProjects.add(project.trim()));
+        projectsMatch[1]
+          .split(",")
+          .forEach((project) => state.discussedProjects.add(project.trim()));
       }
       if (topicsMatch) {
-        const newTopics = topicsMatch[1].split(',').map(topic => topic.trim());
+        const newTopics = topicsMatch[1].split(",").map((topic) => topic.trim());
         state.keyTopics = [...new Set([...state.keyTopics, ...newTopics])];
       }
     })
-    .catch(error => {
+    .catch((error) => {
       console.error("Error updating state:", error);
     });
 }
@@ -336,21 +351,25 @@ async function validateContext() {
   `;
 
   try {
-    const output = await replicate.run("meta/meta-llama-3-70b-instruct", { input: { prompt: validationPrompt } }) as string[];
-    const result = output.join('').trim();
+    const output = (await replicate.run("meta/meta-llama-3-70b-instruct", {
+      input: { prompt: validationPrompt },
+    })) as string[];
+    const result = output.join("").trim();
 
     const correctionsMatch = result.match(/Corrections:\n([\s\S]*)/);
     if (correctionsMatch) {
-      const corrections = correctionsMatch[1].split('\n').map(line => line.trim());
-      corrections.forEach(correction => {
-        if (correction.startsWith('Add project:')) {
-          state.discussedProjects.add(correction.replace('Add project:', '').trim());
-        } else if (correction.startsWith('Remove project:')) {
-          state.discussedProjects.delete(correction.replace('Remove project:', '').trim());
-        } else if (correction.startsWith('Add topic:')) {
-          state.keyTopics.push(correction.replace('Add topic:', '').trim());
-        } else if (correction.startsWith('Remove topic:')) {
-          state.keyTopics = state.keyTopics.filter(topic => topic !== correction.replace('Remove topic:', '').trim());
+      const corrections = correctionsMatch[1].split("\n").map((line) => line.trim());
+      corrections.forEach((correction) => {
+        if (correction.startsWith("Add project:")) {
+          state.discussedProjects.add(correction.replace("Add project:", "").trim());
+        } else if (correction.startsWith("Remove project:")) {
+          state.discussedProjects.delete(correction.replace("Remove project:", "").trim());
+        } else if (correction.startsWith("Add topic:")) {
+          state.keyTopics.push(correction.replace("Add topic:", "").trim());
+        } else if (correction.startsWith("Remove topic:")) {
+          state.keyTopics = state.keyTopics.filter(
+            (topic) => topic !== correction.replace("Remove topic:", "").trim()
+          );
         }
       });
     }
@@ -376,7 +395,7 @@ async function saveChatSession(sessionId?: string) {
 
     const stateToSave = {
       ...state,
-      discussedProjects: discussedProjectsArray
+      discussedProjects: discussedProjectsArray,
     };
 
     if (session) {
@@ -405,7 +424,7 @@ async function loadChatSession(sessionId: string) {
       await initializeWithMessages(session.messages, true);
       state = {
         ...session.state,
-        discussedProjects: new Set(session.state.discussedProjects)
+        discussedProjects: new Set(session.state.discussedProjects),
       };
       return session.messages;
     } else {
@@ -423,19 +442,19 @@ async function loadChatSession(sessionId: string) {
  */
 async function getAllSessionIds() {
   try {
-    const sessions = await ChatSessionModel.find({}, 'sessionId');
-    return sessions.map(session => session.sessionId);
+    const sessions = await ChatSessionModel.find({}, "sessionId");
+    return sessions.map((session) => session.sessionId);
   } catch (error) {
     console.error("Error fetching session IDs:", error);
     throw new Error("Failed to fetch session IDs.");
   }
 }
 
-export { 
-  initialize, 
-  generate, 
-  saveChatSession, 
-  loadChatSession, 
-  getAllSessionIds, 
-  initializeWithMessages 
+export {
+  initialize,
+  generate,
+  saveChatSession,
+  loadChatSession,
+  getAllSessionIds,
+  initializeWithMessages,
 };
