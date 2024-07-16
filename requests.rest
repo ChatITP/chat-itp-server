@@ -1,0 +1,27 @@
+POST http://localhost:3001/user/login HTTP/1.1
+Content-Type: application/json
+
+{
+  "email": "abc@gmail.com",
+  "password": "123456"
+}
+
+###
+POST http://localhost:3001/user/logout HTTP/1.1
+
+###
+POST http://localhost:3001/user/register HTTP/1.1
+Content-Type: application/json
+
+{
+  "email": "neumann@gmail.com",
+  "password": "xxxxx",
+  "name": "John von Neumann",
+  "earlyAccessCode": "9b18e3152fe15eaba2310ddf574d8d04"
+}
+
+###
+POST http://localhost:3001/user/refresh HTTP/1.1
+
+###
+get http://localhost:3001/db/projectCount HTTP/1.1

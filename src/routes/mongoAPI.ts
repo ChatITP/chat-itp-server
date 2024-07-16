@@ -1,24 +1,12 @@
 import express from "express";
 import { Request, Response } from "express";
-import {
-  getProjects,
-  getProjectCount,
-  getCleanProjects,
-  getCleanProjectCount,
-  findByIdAndUpdateCleanProject,
-  getPrompts,
-  getPromptByTitleAndType,
-  getPromptByTitleTypeAndNotId,
-  createPrompt,
-  updatePrompt,
-  deletePrompt,
-} from "../databases/mongoDB";
+import { projects, prompts } from "../databases/mongoDB";
 
 const router = express.Router();
 
 router.get("/projectCount", async (req: Request, res: Response) => {
   try {
-    const count = await getProjectCount();
+    const count = await projects.count();
     console.log("Project count fetched:", count);
     res.json({ count });
   } catch (error) {
@@ -40,9 +28,9 @@ router.get("/getPaginated", async (req: Request, res: Response) => {
   }
 
   try {
-    const projects = await getProjects(limit, offset);
-    console.log(`Projects fetched with limit ${limit} and offset ${offset}:`, projects);
-    res.json(projects);
+    const projectList = await projects.getRaw(limit, offset);
+    console.log(`Projects fetched with limit ${limit} and offset ${offset}:`, projectList);
+    res.json(projectList);
   } catch (error) {
     console.error("Failed to fetch projects:", error);
     res.status(500).json({ error: "Failed to fetch projects" });
@@ -51,7 +39,7 @@ router.get("/getPaginated", async (req: Request, res: Response) => {
 
 router.get("/cleanProjectCount", async (req: Request, res: Response) => {
   try {
-    const count = await getCleanProjectCount();
+    const count = await projects.count();
     console.log("Cleaned project count fetched:", count);
     res.json({ count });
   } catch (error) {
@@ -74,8 +62,8 @@ router.get("/getCleanPaginated", async (req: Request, res: Response) => {
   }
 
   try {
-    const projects = await getCleanProjects(limit, offset, searchQuery);
-    res.json(projects);
+    const projectList = await projects.get(limit, offset, searchQuery);
+    res.json(projectList);
   } catch (error) {
     console.error("Failed to fetch cleaned projects:", error);
     res.status(500).json({ error: "Failed to fetch cleaned projects" });
@@ -90,7 +78,7 @@ router.put("/updateProject/:projectId", async (req: Request, res: Response) => {
     console.log("Received update request for project ID:", projectId);
     console.log("Update data:", updateData);
 
-    const updatedProject = await findByIdAndUpdateCleanProject(projectId, updateData);
+    const updatedProject = await projects.findByIdAndUpdate(projectId, updateData);
 
     if (!updatedProject) {
       return res.status(404).json({ error: "Project not found" });
@@ -106,8 +94,8 @@ router.put("/updateProject/:projectId", async (req: Request, res: Response) => {
 
 router.get("/prompts", async (req: Request, res: Response) => {
   try {
-    const prompts = await getPrompts();
-    res.json(prompts);
+    const promptList = await prompts.get();
+    res.json(promptList);
   } catch (error) {
     console.error("Failed to fetch prompts:", error);
     res.status(500).json({ error: "Failed to fetch prompts" });
@@ -119,12 +107,12 @@ router.post("/prompts", async (req: Request, res: Response) => {
     const { title, type, system_prompt, main_prompt } = req.body;
 
     // check if a prompt with the same title and type already exists
-    const existingPrompt = await getPromptByTitleAndType(title, type);
+    const existingPrompt = await prompts.getByTitleAndType(title, type);
     if (existingPrompt) {
       console.warn("A prompt with this title and type already exists:", { title, type });
       return res.status(400).json({ error: "A prompt with this title and type already exists" });
     }
-    const newPrompt = await createPrompt(title, type, system_prompt, main_prompt);
+    const newPrompt = await prompts.create(title, type, system_prompt, main_prompt);
     console.log("New prompt saved:", newPrompt);
     res.status(201).json(newPrompt);
   } catch (error) {
@@ -138,13 +126,13 @@ router.put("/prompts/:id", async (req: Request, res: Response) => {
     const { id } = req.params;
     const { title, type, system_prompt, main_prompt } = req.body;
 
-    const existingPrompt = await getPromptByTitleTypeAndNotId(title, type, id);
+    const existingPrompt = await prompts.getByTitleTypeAndNotId(title, type, id);
     if (existingPrompt) {
       console.warn("A prompt with this title and type already exists:", { title, type });
       return res.status(400).json({ error: "A prompt with this title and type already exists" });
     }
 
-    const updatedPrompt = await updatePrompt(id, title, type, system_prompt, main_prompt);
+    const updatedPrompt = await prompts.update(id, title, type, system_prompt, main_prompt);
     if (!updatedPrompt) {
       console.warn("Prompt not found for updating:", id);
       return res.status(404).json({ error: "Prompt not found" });
@@ -161,7 +149,7 @@ router.delete("/prompts/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     console.log("Deleting prompt with ID:", id);
-    const deletedPrompt = await deletePrompt(id);
+    const deletedPrompt = await prompts.remove(id);
     if (!deletedPrompt) {
       console.warn("Prompt not found for deletion:", id);
       return res.status(404).json({ error: "Prompt not found" });
