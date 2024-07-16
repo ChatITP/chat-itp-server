@@ -36,7 +36,13 @@ let state: ConversationState = {
  */
 async function initialize(systemPrompt: string) {
   initMemory(systemPrompt);
+  state = {
+    discussedProjects: new Set<string>(),
+    keyTopics: [],
+    interactionCount: 0,
+  };
 }
+
 
 
 async function generateSuggestions(selectedBlocks: string[]): Promise<string[]> {
