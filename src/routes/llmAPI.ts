@@ -6,7 +6,9 @@ import {
   saveChatSession,
   loadChatSession,
   getAllSessionIds,
-  initializeWithMessages
+  initializeWithMessages,
+  generateSuggestions,
+  getAllSessions
 } from "../llm/replicateLlama3";
 
 const router = express.Router();
@@ -44,6 +46,17 @@ router.post("/initialize-with-messages", async (req: Request, res: Response) => 
   } catch (e) {
     console.error("Error initializing with messages:", e);
     res.status(500).json({ success: false, error: "Failed to initialize with messages." });
+  }
+});
+
+
+router.post('/suggestions', async (req, res) => {
+  try {
+    const { selectedBlocks } = req.body;
+    const suggestions = await generateSuggestions(selectedBlocks);
+    res.json(suggestions);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to generate suggestions' });
   }
 });
 
@@ -105,13 +118,13 @@ router.post("/load-session", async (req: Request, res: Response) => {
 
 /**
  * GET /sessions
- * Retrieve all chat session IDs from the database.
- * @returns {object} - JSON response with a list of session IDs or an error message.
+ * Retrieve all chat session objects from the database.
+ * @returns {object} - JSON response with a list of session objects or an error message.
  */
 router.get("/sessions", async (req: Request, res: Response) => {
   try {
-    const sessionIds = await getAllSessionIds();
-    res.json({ success: true, sessionIds });
+    const sessions = await getAllSessions();
+    res.json({ success: true, sessions });
   } catch (e) {
     console.error("Error fetching sessions:", e);
     res.status(500).json({ success: false, error: "Failed to fetch sessions." });

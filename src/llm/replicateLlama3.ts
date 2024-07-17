@@ -43,6 +43,50 @@ async function initialize(systemPrompt: string) {
   };
 }
 
+
+
+async function generateSuggestions(selectedBlocks: string[]): Promise<string[]> {
+  const prompt = `You are an AI assistant specializing in ITP (Interactive Telecommunications Program) projects. Given the following partial question or statement about ITP projects: "${selectedBlocks.join(' ')}", suggest 5 possible next words or short phrases to complete or continue the thought. If the input forms a complete question, include "?" as one of the suggestions. Focus on topics relevant to ITP such as interactive design, technology, art, and innovation.
+
+Respond with ONLY 5 suggested words or short phrases, separated by commas.
+
+Example 1:
+Input: "What are some popular themes in"
+Output: interactive installations, wearable technology, AI art, social impact, ?
+
+Example 2:
+Input: "How do"
+Output: ITP projects, incorporate technology, address social issues, push boundaries, engage audiences, ?
+
+Now, complete this:
+Input: "${selectedBlocks.join(' ')}"
+Output:`;
+
+  const output = await replicate.run("meta/meta-llama-3-70b-instruct", { input: { prompt } }) as string | string[];
+
+  let suggestions: string[];
+  if (Array.isArray(output)) {
+    suggestions = output.join("").split(',').map((s: string) => s.trim());
+  } else if (typeof output === 'string') {
+    suggestions = output.split(',').map((s: string) => s.trim());
+  } else {
+    throw new Error("Unexpected output format from Replicate API");
+  }
+
+  suggestions = suggestions.slice(0, 5);
+  while (suggestions.length < 5) {
+    suggestions.push('');
+  }
+
+  const questionMarkIndex = suggestions.indexOf('?');
+  if (questionMarkIndex !== -1) {
+    suggestions.splice(questionMarkIndex, 1);
+    suggestions.push('?');
+  }
+
+  return suggestions;
+}
+
 /**
  * Initialize the chat session with a series of messages.
  * @param {MessageType[]} messages - An array of messages to initialize the chat session.
@@ -450,11 +494,31 @@ async function getAllSessionIds() {
   }
 }
 
-export {
-  initialize,
-  generate,
-  saveChatSession,
-  loadChatSession,
-  getAllSessionIds,
+/**
+ * Retrieve all chat session objects from the database.
+ * @returns {Promise<{ sessionId: string, created_at: string }[]>} - Returns an array of session objects.
+ */
+async function getAllSessions() {
+  try {
+    const sessions = await ChatSessionModel.find({}, "sessionId createdAt");
+    return sessions.map((session) => ({
+      sessionId: session.sessionId,
+      createdAt: session.createdAt
+    }));
+  } catch (error) {
+    console.error("Error fetching sessions:", error);
+    throw new Error("Failed to fetch sessions.");
+  }
+}
+
+
+export { 
+  initialize, 
+  generate, 
+  saveChatSession, 
+  loadChatSession, 
+  getAllSessionIds, 
   initializeWithMessages,
+  generateSuggestions,
+  getAllSessions
 };
