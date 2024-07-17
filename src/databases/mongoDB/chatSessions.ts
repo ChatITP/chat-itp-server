@@ -1,4 +1,4 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose, { Schema, Document } from "mongoose";
 
 interface Message {
   content: string;
@@ -19,7 +19,7 @@ const chatSessionSchema = new Schema({
     keyTopics: [String],
     interactionCount: Number
   }
-});
+}, { timestamps: { createdAt: 'createdAt' } });
 
 const ChatSessionModel = mongoose.models.ChatSession || mongoose.model<ChatSession>("ChatSession", chatSessionSchema);
 

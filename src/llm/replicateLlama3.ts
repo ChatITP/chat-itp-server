@@ -494,6 +494,24 @@ async function getAllSessionIds() {
   }
 }
 
+/**
+ * Retrieve all chat session objects from the database.
+ * @returns {Promise<{ sessionId: string, created_at: string }[]>} - Returns an array of session objects.
+ */
+async function getAllSessions() {
+  try {
+    const sessions = await ChatSessionModel.find({}, "sessionId createdAt");
+    return sessions.map((session) => ({
+      sessionId: session.sessionId,
+      createdAt: session.createdAt
+    }));
+  } catch (error) {
+    console.error("Error fetching sessions:", error);
+    throw new Error("Failed to fetch sessions.");
+  }
+}
+
+
 export { 
   initialize, 
   generate, 
@@ -501,5 +519,6 @@ export {
   loadChatSession, 
   getAllSessionIds, 
   initializeWithMessages,
-  generateSuggestions
+  generateSuggestions,
+  getAllSessions
 };
