@@ -59,7 +59,7 @@ router.post("/login", async (req: Request, res: Response) => {
       res.cookie("accessToken", accessToken, { httpOnly: true, path: "/" });
       res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
-        path: "/user",
+        path: "/api/user",
       });
 
       // Save the refresh token
@@ -118,7 +118,7 @@ router.post("/logout", async (req: Request, res: Response) => {
   }
 
   res.clearCookie("accessToken");
-  res.clearCookie("refreshToken");
+  res.clearCookie("refreshToken", { path: "/api/user" });
 
   res.status(200).json({ success: true });
 });
