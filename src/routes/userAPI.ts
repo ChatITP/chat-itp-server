@@ -107,7 +107,6 @@ router.post("/logout", async (req: Request, res: Response) => {
   const refreshToken = req.cookies.refreshToken;
   try {
     const refreshTokenObject = await refreshTokens.findOne(refreshToken);
-    console.log(refreshTokenObject);
     if (refreshTokenObject) {
       await refreshTokens.remove(refreshTokenObject._id);
     }

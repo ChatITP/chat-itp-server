@@ -7,7 +7,6 @@ const router = express.Router();
 router.get("/projectCount", async (req: Request, res: Response) => {
   try {
     const count = await projects.count();
-    console.log("Project count fetched:", count);
     res.json({ count });
   } catch (error) {
     console.error("Failed to fetch project count:", error);
@@ -29,7 +28,6 @@ router.get("/getPaginated", async (req: Request, res: Response) => {
 
   try {
     const projectList = await projects.getRaw(limit, offset);
-    console.log(`Projects fetched with limit ${limit} and offset ${offset}:`, projectList);
     res.json(projectList);
   } catch (error) {
     console.error("Failed to fetch projects:", error);
@@ -40,7 +38,6 @@ router.get("/getPaginated", async (req: Request, res: Response) => {
 router.get("/cleanProjectCount", async (req: Request, res: Response) => {
   try {
     const count = await projects.count();
-    console.log("Cleaned project count fetched:", count);
     res.json({ count });
   } catch (error) {
     console.error("Failed to fetch cleaned project count:", error);
@@ -51,7 +48,7 @@ router.get("/cleanProjectCount", async (req: Request, res: Response) => {
 router.get("/getCleanPaginated", async (req: Request, res: Response) => {
   const limit = parseInt(req.query.limit as string) || 10;
   const offset = parseInt(req.query.offset as string) || 0;
-  const searchQuery = req.query.search as string || null;
+  const searchQuery = (req.query.search as string) || null;
 
   if (limit > 50) {
     return res.status(400).json({ error: "Limit cannot exceed 50" });
@@ -75,16 +72,12 @@ router.put("/updateProject/:projectId", async (req: Request, res: Response) => {
     const { projectId } = req.params;
     const updateData = req.body;
 
-    console.log("Received update request for project ID:", projectId);
-    console.log("Update data:", updateData);
-
     const updatedProject = await projects.findByIdAndUpdate(projectId, updateData);
 
     if (!updatedProject) {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    console.log("Project updated with id: ", updatedProject.project_id);
     res.json(updatedProject);
   } catch (error) {
     console.error("Failed to update project:", error);
@@ -113,7 +106,6 @@ router.post("/prompts", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "A prompt with this title and type already exists" });
     }
     const newPrompt = await prompts.create(title, type, system_prompt, main_prompt);
-    console.log("New prompt saved:", newPrompt);
     res.status(201).json(newPrompt);
   } catch (error) {
     console.error("Failed to save prompt:", error);
@@ -137,7 +129,6 @@ router.put("/prompts/:id", async (req: Request, res: Response) => {
       console.warn("Prompt not found for updating:", id);
       return res.status(404).json({ error: "Prompt not found" });
     }
-    console.log("Prompt updated:", updatedPrompt);
     res.json(updatedPrompt);
   } catch (error) {
     console.error("Failed to update prompt:", error);
@@ -148,13 +139,11 @@ router.put("/prompts/:id", async (req: Request, res: Response) => {
 router.delete("/prompts/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    console.log("Deleting prompt with ID:", id);
     const deletedPrompt = await prompts.remove(id);
     if (!deletedPrompt) {
       console.warn("Prompt not found for deletion:", id);
       return res.status(404).json({ error: "Prompt not found" });
     }
-    console.log("Prompt deleted successfully:", id);
     res.status(200).json({ message: "Prompt deleted successfully" });
   } catch (error) {
     console.error("Failed to delete prompt:", error);
