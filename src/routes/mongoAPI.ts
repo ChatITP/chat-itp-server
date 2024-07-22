@@ -87,7 +87,16 @@ router.put("/updateProject/:projectId", async (req: Request, res: Response) => {
 
 router.get("/prompts", async (req: Request, res: Response) => {
   try {
-    const promptList = await prompts.get();
+    const { title, type } = req.query;
+    let promptList;
+    
+    if (title && type) {
+      promptList = await prompts.getByTitleAndType(title as string, type as string);
+      promptList = Array.isArray(promptList) ? promptList : [promptList];
+    } else {
+      promptList = await prompts.get();
+    }
+    
     res.json(promptList);
   } catch (error) {
     console.error("Failed to fetch prompts:", error);
