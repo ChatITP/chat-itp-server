@@ -149,7 +149,11 @@ async function countRaw() {
  * @returns - array of projects
  */
 async function get(limit: number, offset: number, searchQuery: string | null = null) {
-  const filter = searchQuery ? { project_name: { $regex: searchQuery, $options: 'i' } } : {};
+  // Escape regexp characters in search query
+  searchQuery = searchQuery
+    ? searchQuery.replace(/[|\\{}()[\]^$+*?.]/g, "\\$&").replace(/-/g, "\\x2d")
+    : null;
+  const filter = searchQuery ? { project_name: { $regex: searchQuery, $options: "i" } } : {};
 
   const res = await SortedCleanProjectModel.find(filter, null, { limit, skip: offset });
   return res;
