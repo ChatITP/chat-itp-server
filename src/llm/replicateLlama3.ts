@@ -46,42 +46,48 @@ async function initialize(systemPrompt: string) {
 
 
 async function generateSuggestions(selectedBlocks: string[]): Promise<string[]> {
-  const prompt = `You are an AI assistant specializing in ITP (Interactive Telecommunications Program) projects. Given the following partial question or statement about ITP projects: "${selectedBlocks.join(' ')}", suggest 5 possible next words or short phrases to complete or continue the thought. If the input forms a complete question, include "?" as one of the suggestions. Focus on topics relevant to ITP such as interactive design, technology, art, and innovation.
+  const input = selectedBlocks.join(' ');
+  const prompt = `You are an AI assistant specializing in ITP (Interactive Telecommunications Program) projects. Analyze the following input about ITP projects: "${input}"
 
-Respond with ONLY 5 suggested words or short phrases, separated by commas.
+1. First, determine if this is a complete question or statement. If it is, respond with only "COMPLETE".
+2. If it's not complete, suggest up to 5 possible next words or short phrases to complete or continue the thought. Focus on topics relevant to ITP such as interactive design, technology, art, and innovation.
 
-Example 1:
+Respond with either "COMPLETE" or up to 5 suggested words or short phrases, separated by commas.
+
+Examples:
 Input: "What are some popular themes in"
-Output: interactive installations, wearable technology, AI art, social impact, ?
+Output: interactive installations, wearable technology, AI art, social impact, design thinking
 
-Example 2:
-Input: "How do"
-Output: ITP projects, incorporate technology, address social issues, push boundaries, engage audiences, ?
+Input: "How do ITP projects incorporate emerging technologies?"
+Output: COMPLETE
 
-Now, complete this:
-Input: "${selectedBlocks.join(' ')}"
+Input: "Can you describe a project that"
+Output: uses AR, focuses on sustainability, engages community, incorporates AI, addresses accessibility
+
+Now, analyze this:
+Input: "${input}"
 Output:`;
 
-  const output = await replicate.run("meta/meta-llama-3-70b-instruct", { input: { prompt } }) as string | string[];
+  const output = await replicate.run("meta/meta-llama-3.1-405b-instruct", { input: { prompt } }) as string | string[];
 
-  let suggestions: string[];
+  let response: string;
   if (Array.isArray(output)) {
-    suggestions = output.join("").split(',').map((s: string) => s.trim());
+    response = output.join("").trim();
   } else if (typeof output === 'string') {
-    suggestions = output.split(',').map((s: string) => s.trim());
+    response = output.trim();
   } else {
     throw new Error("Unexpected output format from Replicate API");
   }
 
+  if (response === "COMPLETE") {
+    return ["?"];
+  }
+
+  let suggestions = response.split(',').map(s => s.trim());
+  suggestions = suggestions.filter(s => s !== '');
   suggestions = suggestions.slice(0, 5);
   while (suggestions.length < 5) {
     suggestions.push('');
-  }
-
-  const questionMarkIndex = suggestions.indexOf('?');
-  if (questionMarkIndex !== -1) {
-    suggestions.splice(questionMarkIndex, 1);
-    suggestions.push('?');
   }
 
   return suggestions;
@@ -125,7 +131,7 @@ async function rebuildState(messages: MessageType[]) {
   Topics: [list of key topics]
   `;
 
-  const output = (await replicate.run("meta/meta-llama-3-70b-instruct", {
+  const output = (await replicate.run("meta/meta-llama-3.1-405b-instruct", {
     input: { prompt: stateRebuildPrompt },
   })) as string[];
   const result = output.join("").trim();
@@ -164,7 +170,7 @@ async function summarizeConversation(messages: MessageType[]): Promise<string> {
   Summary:`;
 
   try {
-    const output = (await replicate.run("meta/meta-llama-3-70b-instruct", {
+    const output = (await replicate.run("meta/meta-llama-3.1-405b-instruct", {
       input: { prompt: summarizationPrompt },
     })) as string[];
     return output.join("").trim();
@@ -217,7 +223,7 @@ async function generate(userPrompt: string): Promise<string> {
 
     assistant:`;
 
-    const output = await replicate.run("meta/meta-llama-3-70b-instruct", {
+    const output = await replicate.run("meta/meta-llama-3.1-405b-instruct", {
       input: { prompt: inputPrompt },
     });
 
@@ -229,6 +235,8 @@ async function generate(userPrompt: string): Promise<string> {
     } else {
       throw new Error("Unexpected output format from Replicate API");
     }
+    
+    aiResponse = aiResponse.replace(/Discussed projects:[\s\S]*Key topics:[\s\S]*$/, "").trim();
 
     addMessage(userPrompt, "user");
     addMessage(aiResponse, "assistant");
@@ -261,7 +269,7 @@ async function fetchRelevantProjects(userPrompt: string): Promise<string> {
   Query: ${userPrompt}
   Answer:`;
 
-  const intentOutput = (await replicate.run("meta/meta-llama-3-70b-instruct", {
+  const intentOutput = (await replicate.run("meta/meta-llama-3.1-405b-instruct", {
     input: { prompt: intentClassificationPrompt },
   })) as string[];
   const intentResult = intentOutput.join("").replace(/\n/g, "").trim().toUpperCase();
@@ -351,7 +359,7 @@ function updateState(response: string) {
   `;
 
   replicate
-    .run("meta/meta-llama-3-70b-instruct", { input: { prompt: updateStatePrompt } })
+    .run("meta/meta-llama-3.1-405b-instruct", { input: { prompt: updateStatePrompt } })
     .then((output: unknown) => {
       const result = Array.isArray(output) ? output.join("").trim() : String(output).trim();
 
@@ -395,7 +403,7 @@ async function validateContext() {
   `;
 
   try {
-    const output = (await replicate.run("meta/meta-llama-3-70b-instruct", {
+    const output = (await replicate.run("meta/meta-llama-3.1-405b-instruct", {
       input: { prompt: validationPrompt },
     })) as string[];
     const result = output.join("").trim();
