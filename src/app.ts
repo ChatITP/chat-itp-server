@@ -9,9 +9,14 @@ import llmRouter from "./routes/llmAPI";
 import userRouter from "./routes/userAPI";
 import authenticateToken from "./middlewares/authenticateToken";
 import "./proxy";
+// import cors from 'cors';
 
 const app = express();
 const port = process.env.PORT || 3000;
+// app.use(cors({
+//   origin: 'http://localhost:3002', 
+//   credentials: true
+// }));
 
 app.use(bodyParser.json());
 app.use(cookieParser());
