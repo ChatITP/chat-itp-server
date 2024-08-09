@@ -43,10 +43,8 @@ async function initialize(systemPrompt: string) {
   };
 }
 
-
-
 async function generateSuggestions(selectedBlocks: string[]): Promise<string[]> {
-  const input = selectedBlocks.join(' ');
+  const input = selectedBlocks.join(" ");
   const prompt = `You are an AI assistant specializing in ITP (Interactive Telecommunications Program) projects. Analyze the following input about ITP projects: "${input}"
 
 1. First, determine if this is a complete question or statement. If it is, respond with only "COMPLETE".
@@ -68,12 +66,14 @@ Now, analyze this:
 Input: "${input}"
 Output:`;
 
-  const output = await replicate.run("meta/meta-llama-3.1-405b-instruct", { input: { prompt } }) as string | string[];
+  const output = (await replicate.run("meta/meta-llama-3.1-405b-instruct", {
+    input: { prompt },
+  })) as string | string[];
 
   let response: string;
   if (Array.isArray(output)) {
     response = output.join("").trim();
-  } else if (typeof output === 'string') {
+  } else if (typeof output === "string") {
     response = output.trim();
   } else {
     throw new Error("Unexpected output format from Replicate API");
@@ -83,14 +83,62 @@ Output:`;
     return ["?"];
   }
 
-  let suggestions = response.split(',').map(s => s.trim());
-  suggestions = suggestions.filter(s => s !== '');
+  let suggestions = response.split(",").map((s) => s.trim());
+  suggestions = suggestions.filter((s) => s !== "");
   suggestions = suggestions.slice(0, 5);
   while (suggestions.length < 5) {
-    suggestions.push('');
+    suggestions.push("");
   }
 
   return suggestions;
+}
+
+/**
+ * A function that splits a long phrase into shorter segments.
+ * @param phrase - The long phrase to split.
+ * @returns - An array of shorter segments.
+ */
+async function splitPhrase(phrase: string): Promise<string[]> {
+  const prompt = `You are an AI assistant specializing in splitting long phrases into shorter segments.
+
+Respond ONLY with the phrase separated by commas. Always split the question mark into a separate segment if it's present. If the input is already short, return it as is. Try not to split into single words if possible.
+
+Example 1:
+Input: "What are some popular themes in ITP"
+Output: What, are some popular themes, in ITP
+
+Example 2:
+Input: "How do interactive installation make funny sounds"
+Output: do interactive installation, make funny sounds
+
+Example 3:
+Input: "will AI impact the future of technology?"
+Output: will AI impact, the future of technology, ?
+
+
+
+Now, complete this:
+Input: "${phrase}"
+Output: `;
+
+  const output = (await replicate.run("meta/meta-llama-3.1-405b-instruct", {
+    input: { prompt },
+  })) as string | string[];
+
+  let splits: string[];
+
+  if (Array.isArray(output)) {
+    splits = output
+      .join("")
+      .split(",")
+      .map((s: string) => s.trim());
+  } else if (typeof output === "string") {
+    splits = output.split(",").map((s: string) => s.trim());
+  } else {
+    throw new Error("Unexpected output format from Replicate API");
+  }
+
+  return splits;
 }
 
 /**
@@ -235,7 +283,7 @@ async function generate(userPrompt: string): Promise<string> {
     } else {
       throw new Error("Unexpected output format from Replicate API");
     }
-    
+
     aiResponse = aiResponse.replace(/Discussed projects:[\s\S]*Key topics:[\s\S]*$/, "").trim();
 
     addMessage(userPrompt, "user");
@@ -511,7 +559,7 @@ async function getAllSessions() {
     const sessions = await ChatSessionModel.find({}, "sessionId createdAt");
     return sessions.map((session) => ({
       sessionId: session.sessionId,
-      createdAt: session.createdAt
+      createdAt: session.createdAt,
     }));
   } catch (error) {
     console.error("Error fetching sessions:", error);
@@ -519,14 +567,13 @@ async function getAllSessions() {
   }
 }
 
-
-export { 
-  initialize, 
-  generate, 
-  saveChatSession, 
-  loadChatSession, 
-  getAllSessionIds, 
+export {
+  initialize,
+  generate,
+  saveChatSession,
+  loadChatSession,
+  getAllSessionIds,
   initializeWithMessages,
   generateSuggestions,
-  getAllSessions
+  getAllSessions,
 };
