@@ -105,15 +105,15 @@ Respond ONLY with the phrase separated by commas. Always split the question mark
 
 Example 1:
 Input: "What are some popular themes in ITP"
-Output: What, are some popular themes, in ITP
+Output: What are, some popular themes, in ITP
 
 Example 2:
 Input: "How do interactive installation make funny sounds"
-Output: do interactive installation, make funny sounds
+Output: how do, interactive installation, make funny sounds
 
 Example 3:
 Input: "will AI impact the future of technology?"
-Output: will AI impact, the future of technology, ?
+Output: will AI, impact, the future of, technology, ?
 
 
 
@@ -576,4 +576,5 @@ export {
   initializeWithMessages,
   generateSuggestions,
   getAllSessions,
+  splitPhrase,
 };
