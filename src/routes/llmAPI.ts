@@ -8,7 +8,8 @@ import {
   getAllSessionIds,
   initializeWithMessages,
   generateSuggestions,
-  getAllSessions
+  splitPhrase,
+  getAllSessions,
 } from "../llm/replicateLlama3";
 
 const router = express.Router();
@@ -37,7 +38,9 @@ router.post("/initialize", async (req: Request, res: Response) => {
 router.post("/initialize-with-messages", async (req: Request, res: Response) => {
   const { messages } = req.body;
   if (!Array.isArray(messages) || messages.length === 0) {
-    return res.status(400).json({ success: false, error: "Invalid request. Messages array is required." });
+    return res
+      .status(400)
+      .json({ success: false, error: "Invalid request. Messages array is required." });
   }
 
   try {
@@ -49,14 +52,23 @@ router.post("/initialize-with-messages", async (req: Request, res: Response) => 
   }
 });
 
-
-router.post('/suggestions', async (req, res) => {
+router.post("/suggestions", async (req, res) => {
   try {
     const { selectedBlocks } = req.body;
     const suggestions = await generateSuggestions(selectedBlocks);
     res.json(suggestions);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to generate suggestions' });
+    res.status(500).json({ error: "Failed to generate suggestions" });
+  }
+});
+
+router.post("/split", async (req, res) => {
+  try {
+    const { text } = req.body;
+    const split = await splitPhrase(text as string);
+    res.json({ split });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to split phrase" });
   }
 });
 
