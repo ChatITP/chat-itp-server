@@ -47,24 +47,31 @@ async function initialize(systemPrompt: string) {
   };
 }
 
-async function generateSuggestions(selectedBlocks: string[]): Promise<string[]> {
-  const input = selectedBlocks.join(" ");
+async function generateSuggestions(text: string): Promise<string[]> {
+  const input = text;
+  console.log("Input:", input);
   const prompt = `You are an AI assistant specializing in ITP (Interactive Telecommunications Program) projects. Analyze the following input about ITP projects: "${input}"
 
-1. First, determine if this is a complete question or statement. If it is, respond with only "COMPLETE".
-2. If it's not complete, suggest up to 5 possible next words or short phrases to complete or continue the thought. Focus on topics relevant to ITP such as interactive design, technology, art, and innovation.
+Suggest 3 possible next words or short phrases to complete or continue the thought. Focus on topics relevant to ITP such as interactive design, technology, art, and innovation.
 
-Respond with either "COMPLETE" or up to 5 suggested words or short phrases, separated by commas.
+Respond with 3 suggested words or short phrases and potentially one punctuation mark (./?) to end the statement, separated by commas.
+
+Do not include any additional context or explanations. If the input end with a question mark (?) or period (.), provide suggestions that starts a new sentence instead of continuing the old sentence.
+
+Do not answer the input statement directly. Instead, provide suggestions that could follow the input statement.
 
 Examples:
 Input: "What are some popular themes in"
-Output: interactive installations, wearable technology, AI art, social impact, design thinking
+Output: interactive installations, wearable technology, social impact, .
 
-Input: "How do ITP projects incorporate emerging technologies?"
-Output: COMPLETE
+Input: "Find any project that uses VR as assistive technology"
+Output: for accessibility, in healthcare, for education, .
 
-Input: "Can you describe a project that"
-Output: uses AR, focuses on sustainability, engages community, incorporates AI, addresses accessibility
+Input: "How do ITP projects incorporate emerging technologies ?"
+Output: What, List some, Explain how
+
+Input: "Can you describe a project that uses AR ?"
+Output: A project that, A project with, Explain how
 
 Now, analyze this:
 Input: "${input}"
@@ -83,17 +90,9 @@ Output:`;
     throw new Error("Unexpected output format from Replicate API");
   }
 
-  if (response === "COMPLETE") {
-    return ["?"];
-  }
-
   let suggestions = response.split(",").map((s) => s.trim());
   suggestions = suggestions.filter((s) => s !== "");
-  suggestions = suggestions.slice(0, 5);
-  while (suggestions.length < 5) {
-    suggestions.push("");
-  }
-
+  suggestions = suggestions.slice(0, 4);
   return suggestions;
 }
 
