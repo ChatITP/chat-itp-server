@@ -54,8 +54,8 @@ router.post("/initialize-with-messages", async (req: Request, res: Response) => 
 
 router.post("/suggestions", async (req, res) => {
   try {
-    const { selectedBlocks } = req.body;
-    const suggestions = await generateSuggestions(selectedBlocks);
+    const { text } = req.body;
+    const suggestions = await generateSuggestions(text);
     res.json(suggestions);
   } catch (error) {
     res.status(500).json({ error: "Failed to generate suggestions" });
