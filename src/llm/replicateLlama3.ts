@@ -56,9 +56,11 @@ Suggest 3 possible next words or short phrases to complete or continue the thoug
 
 Respond with 3 suggested words or short phrases and potentially one punctuation mark (./?) to end the statement, separated by commas.
 
-Do not include any additional context or explanations. If the input end with a question mark (?) or period (.), provide suggestions that starts a new sentence instead of continuing the old sentence.
+Do not include any additional context or explanations.
 
-Do not answer the input statement directly. Instead, provide suggestions that could follow the input statement.
+If the input end with a question mark (?) or period (.), provide suggestions that starts a new sentence instead of continuing the old sentence.
+
+Do not answer the input statement. Instead, provide suggestions that could enhance the input statement.
 
 Examples:
 Input: "What are some popular themes in"
