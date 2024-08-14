@@ -9,6 +9,7 @@ import {
   initializeWithMessages,
   generateSuggestions,
   splitPhrase,
+  replacePhrase,
   getAllSessions,
 } from "../llm/replicateLlama3";
 
@@ -69,6 +70,16 @@ router.post("/split", async (req, res) => {
     res.json({ split });
   } catch (error) {
     res.status(500).json({ error: "Failed to split phrase" });
+  }
+});
+
+router.post("/replace", async (req, res) => {
+  try {
+    const { text } = req.body;
+    const replacements = await replacePhrase(text as string);
+    res.json(replacements);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to replace phrase" });
   }
 });
 

@@ -46,17 +46,17 @@ async function initialize(systemPrompt: string) {
 async function generateSuggestions(text: string): Promise<string[]> {
   const input = text;
   console.log("Input:", input);
-  const prompt = `You are an AI assistant specializing in ITP (Interactive Telecommunications Program) projects. Analyze the following input about ITP projects: "${input}"
+  const prompt = `You are an AI assistant specializing in completing questions about ITP (Interactive Telecommunications Program) projects. Analyze the following input question about ITP: "${input}"
 
-Suggest 3 possible next words or short phrases to complete or continue the thought. Focus on topics relevant to ITP such as interactive design, technology, art, and innovation.
+Suggest 3 possible next words or short phrases to complete or continue the question. Focus on topics relevant to ITP such as interactive design, technology, art, and innovation.
 
 Respond with 3 suggested words or short phrases and potentially one punctuation mark (./?) to end the statement, separated by commas.
 
-Do not include any additional context or explanations.
+If the input end with a question mark (?) or period (.), provide suggestions that starts a new sentence instead of continuing the old sentence. If the input is empty, provide suggestions that could start a new question.
 
-If the input end with a question mark (?) or period (.), provide suggestions that starts a new sentence instead of continuing the old sentence.
+Do not answer the input question. Instead, provide suggestions that could enhance the input question.
 
-Do not answer the input statement. Instead, provide suggestions that could enhance the input statement.
+Do not include any additional context or explanations, only the suggestions.
 
 Examples:
 Input: "What are some popular themes in"
@@ -95,6 +95,56 @@ Output:`;
 }
 
 /**
+ * Generate suggestions for replacing a word or phrase in a given text.
+ * @param text  The text containing the word or phrase to replace wrapped in 3 angle brackets.
+ * @returns
+ */
+async function replacePhrase(text: string): Promise<string[]> {
+  const input = text;
+  const prompt = `You are an AI assistant specializing in ITP (Interactive Telecommunications Program) projects. Analyze the following input about ITP projects: "${input}"
+
+Suggest some replacements for the word or phrase wrapped in the 3 angle brackets, like <<<word to replace>>>. Focus on topics relevant to ITP such as interactive design, technology, art, and innovation. The replacement phrases should flow nicely in the original sentence but can have different meanings or implications.
+
+If the entire input is wrapped in the 3 angle brackets, provide replacements for the entire input.
+
+Respond with 3 replacement phrases, separated by commas.
+
+Do not include any additional context or explanations.
+
+Examples:
+Input: "What are some <<<popular themes>>> in"
+Output: common topics, important aspects, key elements
+
+Input: "Find any project <<<that uses VR>>> to create assistive technology"
+Output: that utilizes arduino, that uses music, that uses computer vision
+
+Input: "How <<<do ITP projects>>> incorporate emerging technologies ?"
+Output: can students, do IMA projects, should designers
+
+Now, analyze this:
+Input: "${input}"
+Output:`;
+
+  const output = (await replicate.run("meta/meta-llama-3.1-405b-instruct", {
+    input: { prompt },
+  })) as string | string[];
+
+  let response: string;
+  if (Array.isArray(output)) {
+    response = output.join("").trim();
+  } else if (typeof output === "string") {
+    response = output.trim();
+  } else {
+    throw new Error("Unexpected output format from Replicate API");
+  }
+
+  let suggestions = response.split(",").map((s) => s.trim());
+  suggestions = suggestions.filter((s) => s !== "");
+  suggestions = suggestions.slice(0, 3);
+  return suggestions;
+}
+
+/**
  * A function that splits a long phrase into shorter segments.
  * @param phrase - The long phrase to split.
  * @returns - An array of shorter segments.
@@ -115,8 +165,6 @@ Output: how do, interactive installation, make funny sounds
 Example 3:
 Input: "will AI impact the future of technology?"
 Output: will AI, impact, the future of, technology, ?
-
-
 
 Now, complete this:
 Input: "${phrase}"
@@ -578,4 +626,5 @@ export {
   generateSuggestions,
   getAllSessions,
   splitPhrase,
+  replacePhrase,
 };
