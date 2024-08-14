@@ -56,7 +56,7 @@ Suggest 3 possible next words or short phrases to complete or continue the quest
 
 Respond with 3 suggested words or short phrases and potentially one punctuation mark (./?) to end the statement, separated by commas.
 
-If the input ends with a question mark (?) or period (.), provide suggestions that start a new sentence instead of continuing the old sentence. If the input is empty, provide suggestions that could start a new question.
+If the input end with a question mark (?) or period (.), provide suggestions that starts a new sentence instead of continuing the old sentence. If the input is empty, provide suggestions that could start a new question.
 
 Do not answer the input question. Instead, provide suggestions that could enhance the input question.
 
