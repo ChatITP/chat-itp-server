@@ -43,24 +43,33 @@ async function initialize(systemPrompt: string) {
   };
 }
 
-async function generateSuggestions(selectedBlocks: string[]): Promise<string[]> {
-  const input = selectedBlocks.join(" ");
-  const prompt = `You are an AI assistant specializing in ITP (Interactive Telecommunications Program) projects. Analyze the following input about ITP projects: "${input}"
+async function generateSuggestions(text: string): Promise<string[]> {
+  const input = text;
+  console.log("Input:", input);
+  const prompt = `You are an AI assistant specializing in completing questions about ITP (Interactive Telecommunications Program) projects. Analyze the following input question about ITP: "${input}"
 
-1. First, determine if this is a complete question or statement. If it is, respond with only "COMPLETE".
-2. If it's not complete, suggest up to 5 possible next words or short phrases to complete or continue the thought. Focus on topics relevant to ITP such as interactive design, technology, art, and innovation.
+Suggest 3 possible next words or short phrases to complete or continue the question. Focus on topics relevant to ITP such as interactive design, technology, art, and innovation.
 
-Respond with either "COMPLETE" or up to 5 suggested words or short phrases, separated by commas.
+Respond with 3 suggested words or short phrases and potentially one punctuation mark (./?) to end the statement, separated by commas.
+
+If the input end with a question mark (?) or period (.), provide suggestions that starts a new sentence instead of continuing the old sentence. If the input is empty, provide suggestions that could start a new question.
+
+Do not answer the input question. Instead, provide suggestions that could enhance the input question.
+
+Do not include any additional context or explanations, only the suggestions.
 
 Examples:
 Input: "What are some popular themes in"
-Output: interactive installations, wearable technology, AI art, social impact, design thinking
+Output: interactive installations, wearable technology, social impact, .
 
-Input: "How do ITP projects incorporate emerging technologies?"
-Output: COMPLETE
+Input: "Find any project that uses VR as assistive technology"
+Output: for accessibility, in healthcare, for education, .
 
-Input: "Can you describe a project that"
-Output: uses AR, focuses on sustainability, engages community, incorporates AI, addresses accessibility
+Input: "How do ITP projects incorporate emerging technologies ?"
+Output: What, List some, Explain how
+
+Input: "Can you describe a project that uses AR ?"
+Output: A project that, A project with, Explain how
 
 Now, analyze this:
 Input: "${input}"
@@ -79,17 +88,59 @@ Output:`;
     throw new Error("Unexpected output format from Replicate API");
   }
 
-  if (response === "COMPLETE") {
-    return ["?"];
+  let suggestions = response.split(",").map((s) => s.trim());
+  suggestions = suggestions.filter((s) => s !== "");
+  suggestions = suggestions.slice(0, 4);
+  return suggestions;
+}
+
+/**
+ * Generate suggestions for replacing a word or phrase in a given text.
+ * @param text  The text containing the word or phrase to replace wrapped in 3 angle brackets.
+ * @returns
+ */
+async function replacePhrase(text: string): Promise<string[]> {
+  const input = text;
+  const prompt = `You are an AI assistant specializing in ITP (Interactive Telecommunications Program) projects. Analyze the following input about ITP projects: "${input}"
+
+Suggest some replacements for the word or phrase wrapped in the 3 angle brackets, like <<<word to replace>>>. Focus on topics relevant to ITP such as interactive design, technology, art, and innovation. The replacement phrases should flow nicely in the original sentence but can have different meanings or implications.
+
+If the entire input is wrapped in the 3 angle brackets, provide replacements for the entire input.
+
+Respond with 3 replacement phrases, separated by commas.
+
+Do not include any additional context or explanations.
+
+Examples:
+Input: "What are some <<<popular themes>>> in"
+Output: common topics, important aspects, key elements
+
+Input: "Find any project <<<that uses VR>>> to create assistive technology"
+Output: that utilizes arduino, that uses music, that uses computer vision
+
+Input: "How <<<do ITP projects>>> incorporate emerging technologies ?"
+Output: can students, do IMA projects, should designers
+
+Now, analyze this:
+Input: "${input}"
+Output:`;
+
+  const output = (await replicate.run("meta/meta-llama-3.1-405b-instruct", {
+    input: { prompt },
+  })) as string | string[];
+
+  let response: string;
+  if (Array.isArray(output)) {
+    response = output.join("").trim();
+  } else if (typeof output === "string") {
+    response = output.trim();
+  } else {
+    throw new Error("Unexpected output format from Replicate API");
   }
 
   let suggestions = response.split(",").map((s) => s.trim());
   suggestions = suggestions.filter((s) => s !== "");
-  suggestions = suggestions.slice(0, 5);
-  while (suggestions.length < 5) {
-    suggestions.push("");
-  }
-
+  suggestions = suggestions.slice(0, 3);
   return suggestions;
 }
 
@@ -105,17 +156,15 @@ Respond ONLY with the phrase separated by commas. Always split the question mark
 
 Example 1:
 Input: "What are some popular themes in ITP"
-Output: What, are some popular themes, in ITP
+Output: What are, some popular themes, in ITP
 
 Example 2:
 Input: "How do interactive installation make funny sounds"
-Output: do interactive installation, make funny sounds
+Output: how do, interactive installation, make funny sounds
 
 Example 3:
 Input: "will AI impact the future of technology?"
-Output: will AI impact, the future of technology, ?
-
-
+Output: will AI, impact, the future of, technology, ?
 
 Now, complete this:
 Input: "${phrase}"
@@ -576,4 +625,6 @@ export {
   initializeWithMessages,
   generateSuggestions,
   getAllSessions,
+  splitPhrase,
+  replacePhrase,
 };
