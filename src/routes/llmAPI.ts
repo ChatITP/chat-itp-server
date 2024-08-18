@@ -91,7 +91,8 @@ router.post("/replace", async (req, res) => {
  */
 router.post("/generate", async (req: Request, res: Response) => {
   const { userPrompt } = req.body;
-  if (!userPrompt) {
+  console.log("userPrompt", userPrompt);
+  if (typeof userPrompt !== "string") {
     return res.status(400).json({ success: false, error: "Invalid request" });
   }
   try {
