@@ -117,7 +117,7 @@ router.post("/generate", async (req: Request, res: Response) => {
  */
 router.post("/save-session", async (req: Request, res: Response) => {
   try {
-    const sessionId = await saveChatSession(req.body.sessionId);
+    const sessionId = await saveChatSession(req.user.userId, req.body.sessionId);  
     res.json({ success: true, sessionId });
   } catch (e) {
     console.error("Error saving session:", e);
@@ -132,12 +132,8 @@ router.post("/save-session", async (req: Request, res: Response) => {
  * @returns {object} - JSON response with the loaded messages or an error message.
  */
 router.post("/load-session", async (req: Request, res: Response) => {
-  const { sessionId } = req.body;
-  if (!sessionId) {
-    return res.status(400).json({ success: false, error: "Invalid request" });
-  }
   try {
-    const messages = await loadChatSession(sessionId);
+    const messages = await loadChatSession(req.user.userId, req.body.sessionId);  // Assuming `userId` is added by `authenticateToken`
     res.json({ success: true, messages });
   } catch (e) {
     console.error("Error loading session:", e);
@@ -152,7 +148,7 @@ router.post("/load-session", async (req: Request, res: Response) => {
  */
 router.get("/sessions", async (req: Request, res: Response) => {
   try {
-    const sessions = await getAllSessions();
+    const sessions = await getAllSessions(req.user.userId);
     res.json({ success: true, sessions });
   } catch (e) {
     console.error("Error fetching sessions:", e);

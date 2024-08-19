@@ -629,13 +629,13 @@ async function validateContext() {
   }
 }
 
-async function saveChatSession(sessionId?: string) {
+async function saveChatSession(userId: string, sessionId?: string) {
   try {
-    const messages = getMessageMemory();
+    const messages = getMessageMemory().slice(1);
     if (!sessionId) {
       sessionId = uuidv4();
     }
-    const session = await ChatSessionModel.findOne({ sessionId });
+    const session = await ChatSessionModel.findOne({ sessionId, userId });
 
     const discussedProjectsArray = Array.from(state.discussedProjects);
 
@@ -649,7 +649,7 @@ async function saveChatSession(sessionId?: string) {
       session.state = stateToSave;
       await session.save();
     } else {
-      const newSession = new ChatSessionModel({ sessionId, messages, state: stateToSave });
+      const newSession = new ChatSessionModel({ sessionId, userId, messages, state: stateToSave });
       await newSession.save();
     }
     return sessionId;
@@ -659,9 +659,9 @@ async function saveChatSession(sessionId?: string) {
   }
 }
 
-async function loadChatSession(sessionId: string) {
+async function loadChatSession(userId: string, sessionId: string) {
   try {
-    const session = await ChatSessionModel.findOne({ sessionId });
+    const session = await ChatSessionModel.findOne({ sessionId, userId });
     if (session) {
       await initializeWithMessages(session.messages, true);
       state = {
@@ -682,9 +682,9 @@ async function loadChatSession(sessionId: string) {
  * Retrieve all chat session IDs from the database.
  * @returns {Promise<string[]>} - Returns an array of session IDs.
  */
-async function getAllSessionIds() {
+async function getAllSessionIds(userId: string) {
   try {
-    const sessions = await ChatSessionModel.find({}, "sessionId");
+    const sessions = await ChatSessionModel.find({ userId }, "sessionId");
     return sessions.map((session) => session.sessionId);
   } catch (error) {
     console.error("Error fetching session IDs:", error);
@@ -696,9 +696,9 @@ async function getAllSessionIds() {
  * Retrieve all chat session objects from the database.
  * @returns {Promise<{ sessionId: string, created_at: string }[]>} - Returns an array of session objects.
  */
-async function getAllSessions() {
+async function getAllSessions(userId: string) {
   try {
-    const sessions = await ChatSessionModel.find({}, "sessionId createdAt");
+    const sessions = await ChatSessionModel.find({ userId }, "sessionId createdAt");
     return sessions.map((session) => ({
       sessionId: session.sessionId,
       createdAt: session.createdAt,

@@ -14,8 +14,8 @@ if (!process.env.JWT_REFRESH_SECRET) {
  * @param email - The email of the user
  * @returns - The access token
  */
-function generateAccessToken(email: string) {
-  const token = jwt.sign({ email }, process.env.JWT_ACCESS_SECRET as string, { expiresIn: "10m" });
+function generateAccessToken(userId: string) {
+  const token = jwt.sign({ userId }, process.env.JWT_ACCESS_SECRET as string, { expiresIn: "10m" });
   return token;
 }
 
@@ -24,8 +24,8 @@ function generateAccessToken(email: string) {
  * @param email - The email of the user
  * @returns - The refresh token
  */
-function generateRefreshToken(email: string) {
-  const token = jwt.sign({ email }, process.env.JWT_REFRESH_SECRET as string);
+function generateRefreshToken(userId: string) {
+  const token = jwt.sign({ userId }, process.env.JWT_REFRESH_SECRET as string);
   return token;
 }
 

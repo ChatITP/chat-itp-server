@@ -25,12 +25,12 @@ async function getUser(email: string) {
  * @param email - email of the user.
  * @param password - password of the user.
  * @param name - name of the user.
- * @returns - true if the user was created, false if the user already exists.
+ * @returns - an object containing the user ID and email if created, null if the user already exists.
  */
 async function register(email: string, password: string, name: string) {
   const userExists = await getUser(email);
   if (userExists) {
-    return false;
+    return null;
   }
 
   const hashed = await bcrypt.hash(password, 12);
@@ -40,23 +40,27 @@ async function register(email: string, password: string, name: string) {
     name,
   });
   await user.save();
-  return true;
+  return { id: user._id, email: user.email };
 }
 
 /**
  * Verify a user.
  * @param email - email of the user.
  * @param password - password of the user.
- * @returns - true if the user was logged in, false if the user does not exist or the password is incorrect.
+ * @returns - an object containing the user ID and email if login is successful, null otherwise.
  */
 async function login(email: string, password: string) {
   const user = await getUser(email);
   if (!user) {
-    return false;
+    return null;
   }
 
   const match = await bcrypt.compare(password, user.password);
-  return match;
+  if (match) {
+    return { id: user._id, email: user.email };
+  } else {
+    return null;
+  }
 }
 
 export { register, login };
