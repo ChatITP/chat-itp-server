@@ -17,7 +17,8 @@ const chatSessionSchema = new Schema({
   state: {
     discussedProjects: [String],
     keyTopics: [String],
-    interactionCount: Number
+    interactionCount: Number,
+    systemPrompt: String
   }
 }, { timestamps: { createdAt: 'createdAt' } });
 

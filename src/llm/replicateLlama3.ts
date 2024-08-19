@@ -9,6 +9,7 @@ import {
   MessageType,
 } from "./sessions";
 import { v4 as uuidv4 } from "uuid";
+import { isImageGenerationRequest, generateImage } from "./replicateSD";
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
@@ -22,12 +23,14 @@ type ConversationState = {
   discussedProjects: Set<string>;
   keyTopics: string[];
   interactionCount: number;
+  systemPrompt: string;
 };
 
 let state: ConversationState = {
   discussedProjects: new Set<string>(),
   keyTopics: [],
   interactionCount: 0,
+  systemPrompt: "",
 };
 
 /**
@@ -40,6 +43,7 @@ async function initialize(systemPrompt: string) {
     discussedProjects: new Set<string>(),
     keyTopics: [],
     interactionCount: 0,
+    systemPrompt: systemPrompt,
   };
 }
 
@@ -153,17 +157,30 @@ async function initializeWithMessages(messages: MessageType[], isLoadingSession:
   if (isLoadingSession) {
     await rebuildState(messages);
   }
+  // Ensure the system prompt is set when initializing with messages
+  const systemMessage = messages.find(m => m.role === 'system');
+  if (systemMessage) {
+    state.systemPrompt = systemMessage.content;
+  }
 }
 
 /**
  * Rebuilds the conversation state from a given array of messages.
  * @param {MessageType[]} messages - An array of messages to rebuild the state from.
  */
+/**
+ * Rebuilds the conversation state from a given array of messages.
+ * @param {MessageType[]} messages - An array of messages to rebuild the state from.
+ */
 async function rebuildState(messages: MessageType[]) {
+  // Find the system message to extract the system prompt
+  const systemMessage = messages.find(m => m.role === 'system');
+  
   state = {
     discussedProjects: new Set<string>(),
     keyTopics: [],
     interactionCount: messages.length,
+    systemPrompt: systemMessage ? systemMessage.content : "", // Set the system prompt
   };
 
   const stateRebuildPrompt = `
@@ -192,6 +209,11 @@ async function rebuildState(messages: MessageType[]) {
   }
   if (topicsMatch) {
     state.keyTopics = topicsMatch[1].split(",").map((topic) => topic.trim());
+  }
+
+  if (!state.systemPrompt) {
+    state.systemPrompt = "You are an AI assistant specializing in discussing projects.";
+    console.warn("No system prompt found in messages. Using default system prompt.");
   }
 }
 
@@ -233,8 +255,88 @@ async function summarizeConversation(messages: MessageType[]): Promise<string> {
  * @param {string} userPrompt - The user prompt to generate a response for.
  * @returns {Promise<string>} - Returns the AI-generated response.
  */
-async function generate(userPrompt: string): Promise<string> {
+async function generate(userPrompt: string): Promise<{ type: string, content: string }> {
   try {
+    const isImageRequest = await isImageGenerationRequest(userPrompt);
+
+    if (isImageRequest) {
+      const imagePromptCreationPrompt = `
+Based on the following user request and conversation context, create a concise and effective prompt for generating an image. The prompt should be simple, direct, and focus on visual elements that image generation models can easily interpret.
+
+User request: ${userPrompt}
+
+Conversation context:
+${formatMessages(getMessageMemory().slice(-5))}
+
+Key topics: ${state.keyTopics.join(", ")}
+
+Please provide an image generation prompt that:
+1. Uses simple, concrete terms to describe the main subject or scene.
+2. Specifies a clear art style (e.g., digital art, photo-realistic, cartoon, oil painting).
+3. Mentions 2-3 key colors or a color scheme.
+4. Includes a brief description of the overall mood or atmosphere.
+5. Adds 1-2 important details that enhance the image without overcomplicating it.
+
+Keep the entire prompt under 75 words. Avoid abstract concepts, technical terms, or overly specific instructions. Do not use verbs like "generate" or "create". Provide only the image generation prompt, without any additional explanation or context.
+`;
+
+      const imagePromptOutput = await replicate.run("meta/meta-llama-3.1-405b-instruct", {
+        input: { prompt: imagePromptCreationPrompt },
+      }) as string | string[] | null;
+
+      let imagePrompt: string;
+      if (Array.isArray(imagePromptOutput)) {
+        imagePrompt = imagePromptOutput.join("").trim();
+      } else if (typeof imagePromptOutput === "string") {
+        imagePrompt = imagePromptOutput.trim();
+      } else if (imagePromptOutput == null) {
+        throw new Error("Received null from Replicate API for image prompt creation");
+      } else {
+        throw new Error(`Unexpected output type from Replicate API: ${typeof imagePromptOutput}`);
+      }
+
+      if (imagePrompt === "") {
+        throw new Error("Received empty string from Replicate API for image prompt creation");
+      }
+
+      const imageResult = await generateImage(imagePrompt);
+      addMessage(userPrompt, "user");
+      if (imageResult.success) {
+        const responsePrompt = `
+Respond directly to the user about the generated image based on their request. Your response should:
+1. Briefly acknowledge the user's request
+2. Ask the user for their thoughts or if they want any modifications
+
+Do not include any meta-text or prefixes like "Here's a response:" or similar phrases. Start your response immediately addressing the user's request.
+
+User request: ${userPrompt}
+Generated image based on: ${imagePrompt}
+
+Your response:`;
+
+        const responseOutput = await replicate.run("meta/meta-llama-3.1-405b-instruct", {
+          input: { prompt: responsePrompt },
+        }) as string | string[] | null;
+
+        let response: string;
+        if (Array.isArray(responseOutput)) {
+          response = responseOutput.join("").trim();
+        } else if (typeof responseOutput === "string") {
+          response = responseOutput.trim();
+        } else if (responseOutput == null) {
+          response = "Here's the image I've generated based on your request. Let me know if you'd like any changes!";
+        } else {
+          console.warn("Unexpected response type from Replicate API:", typeof responseOutput);
+          response = "I've created an image based on your request. What do you think of it?";
+        }
+
+        addMessage(`${response}\n\nImage URL: ${imageResult.content}`, "assistant");
+        return { type: "image", content: JSON.stringify({ imageUrl: imageResult.content, text: response }) };
+      } else {
+        addMessage(imageResult.content, "assistant");
+        return { type: "text", content: imageResult.content };
+      }
+    }
     state.interactionCount++;
 
     const fullHistory = getMessageMemory();
@@ -258,7 +360,7 @@ async function generate(userPrompt: string): Promise<string> {
     const relevantProjectsText = await fetchRelevantProjects(userPrompt);
 
     const inputPrompt = `
-    system: You are an AI assistant specializing in discussing projects. Use the provided project information to answer queries accurately. If no project info is given, respond based on general knowledge. When asked about "another project" or a "different project", always provide information about a project that hasn't been mentioned in this conversation. If you run out of unique projects to describe, clearly state this fact.
+    system: ${state.systemPrompt}
 
     Conversation context:
     ${context}
@@ -295,7 +397,7 @@ async function generate(userPrompt: string): Promise<string> {
       await validateContext();
     }
 
-    return aiResponse;
+    return { type: "text", content: aiResponse };
   } catch (error) {
     console.error("Error generating response:", error);
     throw new Error("Failed to generate response.");
@@ -478,11 +580,6 @@ async function validateContext() {
   }
 }
 
-/**
- * Save the current chat session to the database.
- * @param {string} [sessionId] - (optional) The session ID to save the chat session under.
- * @returns {Promise<string>} - Returns the session ID.
- */
 async function saveChatSession(sessionId?: string) {
   try {
     const messages = getMessageMemory();
@@ -512,11 +609,7 @@ async function saveChatSession(sessionId?: string) {
     throw new Error("Failed to save session.");
   }
 }
-/**
- * Load a chat session from the database by session ID.
- * @param {string} sessionId - The session ID to load the chat session from.
- * @returns {Promise<MessageType[]>} - Returns an array of messages from the loaded session.
- */
+
 async function loadChatSession(sessionId: string) {
   try {
     const session = await ChatSessionModel.findOne({ sessionId });

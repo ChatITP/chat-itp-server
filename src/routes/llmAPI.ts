@@ -62,9 +62,9 @@ router.post('/suggestions', async (req, res) => {
 
 /**
  * POST /generate
- * Generate an AI response based on the user prompt.
+ * Generate an AI response or image based on the user prompt.
  * @param {string} userPrompt - The user prompt to generate a response for.
- * @returns {object} - JSON response with the generated AI content or an error message.
+ * @returns {object} - JSON response with the generated AI content (text or image URL) or an error message.
  */
 router.post("/generate", async (req: Request, res: Response) => {
   const { userPrompt } = req.body;
@@ -72,11 +72,16 @@ router.post("/generate", async (req: Request, res: Response) => {
     return res.status(400).json({ success: false, error: "Invalid request" });
   }
   try {
-    const aiResponse = await generate(userPrompt);
-    res.json({ success: true, content: aiResponse });
+    const result = await generate(userPrompt);
+    if (result.type === "image") {
+      const { imageUrl, text } = JSON.parse(result.content);
+      res.json({ success: true, type: "image", content: { imageUrl, text } });
+    } else {
+      res.json({ success: true, type: result.type, content: result.content });
+    }
   } catch (e) {
     console.error("Error:", e);
-    res.status(500).json({ success: false, error: "Prediction failed." });
+    res.status(500).json({ success: false, error: "Generation failed." });
   }
 });
 
