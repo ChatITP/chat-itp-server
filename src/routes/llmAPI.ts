@@ -23,10 +23,10 @@ const router = express.Router();
  */
 router.post("/initialize", async (req: Request, res: Response) => {
   const { systemPrompt } = req.body;
-  if (!systemPrompt) {
+  if (!systemPrompt || !req.user?.userId) {
     return res.status(400).json({ success: false, error: "Invalid request" });
   }
-  await initialize(systemPrompt);
+  await initialize(req.user.userId, systemPrompt);
   res.json({ success: true });
 });
 
@@ -38,14 +38,14 @@ router.post("/initialize", async (req: Request, res: Response) => {
  */
 router.post("/initialize-with-messages", async (req: Request, res: Response) => {
   const { messages } = req.body;
-  if (!Array.isArray(messages) || messages.length === 0) {
+  if (!Array.isArray(messages) || messages.length === 0 || !req.user?.userId) {
     return res
       .status(400)
       .json({ success: false, error: "Invalid request. Messages array is required." });
   }
 
   try {
-    await initializeWithMessages(messages);
+    await initializeWithMessages(req.user.userId, messages);
     res.json({ success: true });
   } catch (e) {
     console.error("Error initializing with messages:", e);
@@ -91,12 +91,11 @@ router.post("/replace", async (req, res) => {
  */
 router.post("/generate", async (req: Request, res: Response) => {
   const { userPrompt } = req.body;
-  console.log("userPrompt", userPrompt);
-  if (typeof userPrompt !== "string") {
+  if (typeof userPrompt !== "string" || !req.user?.userId) {
     return res.status(400).json({ success: false, error: "Invalid request" });
   }
   try {
-    const result = await generate(userPrompt);
+    const result = await generate(userPrompt, req.user.userId);
     if (result.type === "image") {
       const { imageUrl, text } = JSON.parse(result.content);
       res.json({ success: true, type: "image", content: { imageUrl, text } });
@@ -117,7 +116,10 @@ router.post("/generate", async (req: Request, res: Response) => {
  */
 router.post("/save-session", async (req: Request, res: Response) => {
   try {
-    const sessionId = await saveChatSession(req.user.userId, req.body.sessionId);  
+    if (!req.user?.userId) {
+      return res.status(400).json({ success: false, error: "Invalid request" });
+    }
+    const sessionId = await saveChatSession(req.user.userId, req.body.sessionId);
     res.json({ success: true, sessionId });
   } catch (e) {
     console.error("Error saving session:", e);
@@ -133,7 +135,10 @@ router.post("/save-session", async (req: Request, res: Response) => {
  */
 router.post("/load-session", async (req: Request, res: Response) => {
   try {
-    const messages = await loadChatSession(req.user.userId, req.body.sessionId);  // Assuming `userId` is added by `authenticateToken`
+    if (!req.user?.userId || !req.body.sessionId) {
+      return res.status(400).json({ success: false, error: "Invalid request" });
+    }
+    const messages = await loadChatSession(req.user.userId, req.body.sessionId);
     res.json({ success: true, messages });
   } catch (e) {
     console.error("Error loading session:", e);
@@ -148,6 +153,9 @@ router.post("/load-session", async (req: Request, res: Response) => {
  */
 router.get("/sessions", async (req: Request, res: Response) => {
   try {
+    if (!req.user?.userId) {
+      return res.status(400).json({ success: false, error: "Invalid request" });
+    }
     const sessions = await getAllSessions(req.user.userId);
     res.json({ success: true, sessions });
   } catch (e) {

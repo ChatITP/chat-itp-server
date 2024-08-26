@@ -4,9 +4,13 @@ import { ChatSessionModel } from "../databases/mongoDB";
 import {
   initialize as initMemory,
   getMessageMemory,
+  saveState,
+  saveMessageMemory,
+  getState,
+  clearSession,
   addMessage,
   clearMessageMemory,
-  MessageType,
+  MessageType
 } from "./sessions";
 import { v4 as uuidv4 } from "uuid";
 import { isImageGenerationRequest, generateImage } from "./replicateSD";
@@ -26,25 +30,21 @@ type ConversationState = {
   systemPrompt: string;
 };
 
-let state: ConversationState = {
-  discussedProjects: new Set<string>(),
-  keyTopics: [],
-  interactionCount: 0,
-  systemPrompt: "",
-};
-
 /**
  * Initialize the chat system with a system prompt.
+ * @param {string} userId - The user ID for the chat session.
  * @param {string} systemPrompt - The system prompt to initialize the chat session.
  */
-async function initialize(systemPrompt: string) {
-  initMemory(systemPrompt);
-  state = {
+async function initialize(userId: string, systemPrompt: string) {
+  const initialState: ConversationState = {
     discussedProjects: new Set<string>(),
     keyTopics: [],
     interactionCount: 0,
     systemPrompt: systemPrompt,
   };
+
+  await saveState(userId, initialState);
+  await saveMessageMemory(userId, [{ content: systemPrompt, role: "system" }]);
 }
 
 async function generateSuggestions(text: string): Promise<string[]> {
@@ -56,7 +56,7 @@ Suggest 3 possible next words or short phrases to complete or continue the quest
 
 Respond with 3 suggested words or short phrases and potentially one punctuation mark (./?) to end the statement, separated by commas.
 
-If the input end with a question mark (?) or period (.), provide suggestions that starts a new sentence instead of continuing the old sentence. If the input is empty, provide suggestions that could start a new question.
+If the input ends with a question mark (?) or period (.), provide suggestions that start a new sentence instead of continuing the old sentence. If the input is empty, provide suggestions that could start a new question.
 
 Do not answer the input question. Instead, provide suggestions that could enhance the input question.
 
@@ -196,41 +196,34 @@ Output: `;
 
 /**
  * Initialize the chat session with a series of messages.
+ * @param {string} userId - The user ID for the chat session.
  * @param {MessageType[]} messages - An array of messages to initialize the chat session.
+ * @param {boolean} isLoadingSession - Whether this is a session being loaded.
  */
-async function initializeWithMessages(messages: MessageType[], isLoadingSession: boolean = false) {
-  clearMessageMemory();
+async function initializeWithMessages(userId: string, messages: MessageType[], isLoadingSession: boolean = false) {
+  await clearMessageMemory(userId);
   for (const message of messages) {
-    addMessage(message.content, message.role);
+    await addMessage(userId, message.content, message.role);
   }
   if (isLoadingSession) {
-    await rebuildState(messages);
+    await rebuildState(userId, messages);
   }
   // Ensure the system prompt is set when initializing with messages
   const systemMessage = messages.find(m => m.role === 'system');
   if (systemMessage) {
+    const state = await getState(userId);
     state.systemPrompt = systemMessage.content;
+    await saveState(userId, state);
   }
 }
 
 /**
  * Rebuilds the conversation state from a given array of messages.
+ * @param {string} userId - The user ID for the chat session.
  * @param {MessageType[]} messages - An array of messages to rebuild the state from.
  */
-/**
- * Rebuilds the conversation state from a given array of messages.
- * @param {MessageType[]} messages - An array of messages to rebuild the state from.
- */
-async function rebuildState(messages: MessageType[]) {
-  // Find the system message to extract the system prompt
-  const systemMessage = messages.find(m => m.role === 'system');
-  
-  state = {
-    discussedProjects: new Set<string>(),
-    keyTopics: [],
-    interactionCount: messages.length,
-    systemPrompt: systemMessage ? systemMessage.content : "", // Set the system prompt
-  };
+async function rebuildState(userId: string, messages: MessageType[]) {
+  const state = await getState(userId);
 
   const stateRebuildPrompt = `
   Analyze the following conversation and extract:
@@ -245,11 +238,11 @@ async function rebuildState(messages: MessageType[]) {
   Topics: [list of key topics]
   `;
 
-  const output = (await replicate.run("meta/meta-llama-3.1-405b-instruct", {
+  const output = await replicate.run("meta/meta-llama-3.1-405b-instruct", {
     input: { prompt: stateRebuildPrompt },
-  })) as string[];
-  const result = output.join("").trim();
+  }) as string[];
 
+  const result = output.join("").trim();
   const projectsMatch = result.match(/Projects: (.*)/);
   const topicsMatch = result.match(/Topics: (.*)/);
 
@@ -260,10 +253,7 @@ async function rebuildState(messages: MessageType[]) {
     state.keyTopics = topicsMatch[1].split(",").map((topic) => topic.trim());
   }
 
-  if (!state.systemPrompt) {
-    state.systemPrompt = "You are an AI assistant specializing in discussing projects.";
-    console.warn("No system prompt found in messages. Using default system prompt.");
-  }
+  await saveState(userId, state);
 }
 
 /**
@@ -302,10 +292,14 @@ async function summarizeConversation(messages: MessageType[]): Promise<string> {
 /**
  * Generate a response from the AI model based on the user prompt.
  * @param {string} userPrompt - The user prompt to generate a response for.
+ * @param {string} userId - The user ID for the chat session.
  * @returns {Promise<string>} - Returns the AI-generated response.
  */
-async function generate(userPrompt: string): Promise<{ type: string, content: string }> {
+async function generate(userPrompt: string, userId: string): Promise<{ type: string, content: string }> {
   try {
+    const state = await getState(userId);
+    const messages = await getMessageMemory(userId);
+
     const isImageRequest = await isImageGenerationRequest(userPrompt);
 
     if (isImageRequest) {
@@ -315,7 +309,7 @@ Based on the following user request and conversation context, create a concise a
 User request: ${userPrompt}
 
 Conversation context:
-${formatMessages(getMessageMemory().slice(-5))}
+${formatMessages(messages.slice(-5))}
 
 Key topics: ${state.keyTopics.join(", ")}
 
@@ -349,7 +343,7 @@ Keep the entire prompt under 75 words. Avoid abstract concepts, technical terms,
       }
 
       const imageResult = await generateImage(imagePrompt);
-      addMessage(userPrompt, "user");
+      await addMessage(userId, userPrompt, "user");
       if (imageResult.success) {
         const responsePrompt = `
 Respond directly to the user about the generated image based on their request. Your response should:
@@ -379,34 +373,33 @@ Your response:`;
           response = "I've created an image based on your request. What do you think of it?";
         }
 
-        addMessage(`${response}\n\nImage URL: ${imageResult.content}`, "assistant");
+        await addMessage(userId, `${response}\n\nImage URL: ${imageResult.content}`, "assistant");
         return { type: "image", content: JSON.stringify({ imageUrl: imageResult.content, text: response }) };
       } else {
-        addMessage(imageResult.content, "assistant");
+        await addMessage(userId, imageResult.content, "assistant");
         return { type: "text", content: imageResult.content };
       }
     }
     state.interactionCount++;
 
-    const fullHistory = getMessageMemory();
     let context = "";
 
-    if (fullHistory.length > SUMMARIZE_THRESHOLD) {
-      const olderMessages = fullHistory.slice(0, -MAX_FULL_HISTORY);
-      const recentMessages = fullHistory.slice(-MAX_FULL_HISTORY);
+    if (messages.length > SUMMARIZE_THRESHOLD) {
+      const olderMessages = messages.slice(0, -MAX_FULL_HISTORY);
+      const recentMessages = messages.slice(-MAX_FULL_HISTORY);
 
       const summary = await summarizeConversation(olderMessages);
       context = `Summary of earlier conversation:\n${summary}\n\nRecent messages:\n${formatMessages(
         recentMessages
       )}`;
     } else {
-      context = formatMessages(fullHistory);
+      context = formatMessages(messages);
     }
 
     context += `\nDiscussed projects: ${Array.from(state.discussedProjects).join(", ")}`;
     context += `\nKey topics: ${state.keyTopics.join(", ")}`;
 
-    const relevantProjectsText = await fetchRelevantProjects(userPrompt);
+    const relevantProjectsText = await fetchRelevantProjects(userPrompt, userId);
 
     const inputPrompt = `
     system: ${state.systemPrompt}
@@ -437,13 +430,13 @@ Your response:`;
 
     aiResponse = aiResponse.replace(/Discussed projects:[\s\S]*Key topics:[\s\S]*$/, "").trim();
 
-    addMessage(userPrompt, "user");
-    addMessage(aiResponse, "assistant");
+    await addMessage(userId, userPrompt, "user");
+    await addMessage(userId, aiResponse, "assistant");
 
-    updateState(aiResponse);
+    await updateState(userId, aiResponse);
 
     if (state.interactionCount % CONTEXT_VALIDATION_INTERVAL === 0) {
-      await validateContext();
+      await validateContext(userId);
     }
 
     return { type: "text", content: aiResponse };
@@ -458,7 +451,7 @@ Your response:`;
  * @param {string} userPrompt - The user's input prompt.
  * @returns {Promise<string>} - A promise that resolves to a string containing relevant project information.
  */
-async function fetchRelevantProjects(userPrompt: string): Promise<string> {
+async function fetchRelevantProjects(userPrompt: string, userId: string): Promise<string> {
   const intentClassificationPrompt = `Classify the following user query about projects. 
   Respond with one of these exact labels:
   YES_RANDOM - if the user is asking for any random project
@@ -475,8 +468,9 @@ async function fetchRelevantProjects(userPrompt: string): Promise<string> {
 
   let relevantProjectsText = "";
   if (intentResult.includes("YES_RANDOM") || intentResult.includes("YES_SPECIFIC")) {
+    const state = await getState(userId);
     if (intentResult.includes("YES_RANDOM")) {
-      const uniqueProject = await getUniqueProject();
+      const uniqueProject = await getUniqueProject(state);
       relevantProjectsText = uniqueProject.text;
     } else {
       const searchResults = await searchProjectsByText(userPrompt, 5);
@@ -491,6 +485,7 @@ async function fetchRelevantProjects(userPrompt: string): Promise<string> {
         relevantProjectsText = "No new relevant projects found.";
       }
     }
+    await saveState(userId, state);
   }
 
   return relevantProjectsText;
@@ -507,12 +502,13 @@ function formatMessages(messages: MessageType[]): string {
 
 /**
  * Retrieves a unique project that hasn't been discussed before.
+ * @param {ConversationState} state - The conversation state.
  * @returns {Promise<any>} - A promise that resolves to a unique project object.
  */
-async function getUniqueProject(): Promise<any> {
+async function getUniqueProject(state: ConversationState): Promise<any> {
   let attempts = 0;
   while (attempts < 10) {
-    const project = await getRandomProject();
+    const project = await getRandomProject(state);
     if (!state.discussedProjects.has(project.id)) {
       state.discussedProjects.add(project.id);
       return project;
@@ -524,15 +520,16 @@ async function getUniqueProject(): Promise<any> {
 
 /**
  * Get a random project from the database.
+ * @param {ConversationState} state - The conversation state.
  * @returns {Promise<any>} - Returns a random project.
  */
-async function getRandomProject(): Promise<any> {
+async function getRandomProject(state: ConversationState): Promise<any> {
   const projects = await searchProjectsByText("project", 10);
   const availableProjects = projects.filter((p) => !state.discussedProjects.has(p.id));
 
   if (availableProjects.length === 0) {
     state.discussedProjects.clear();
-    return getRandomProject();
+    return getRandomProject(state);
   }
 
   const randomIndex = Math.floor(Math.random() * availableProjects.length);
@@ -541,9 +538,10 @@ async function getRandomProject(): Promise<any> {
 
 /**
  * Updates the conversation state based on the AI's response.
+ * @param {string} userId - The user ID for the chat session.
  * @param {string} response - The AI's response to analyze and update the state from.
  */
-function updateState(response: string) {
+async function updateState(userId: string, response: string) {
   const updateStatePrompt = `
   Based on the following AI response, identify:
   1. Any new projects mentioned
@@ -557,34 +555,37 @@ function updateState(response: string) {
   Topics: [list of key topics]
   `;
 
-  replicate
-    .run("meta/meta-llama-3.1-405b-instruct", { input: { prompt: updateStatePrompt } })
-    .then((output: unknown) => {
-      const result = Array.isArray(output) ? output.join("").trim() : String(output).trim();
+  const output = await replicate.run("meta/meta-llama-3.1-405b-instruct", {
+    input: { prompt: updateStatePrompt },
+  }) as string[];
 
-      const projectsMatch = result.match(/New Projects: (.*)/);
-      const topicsMatch = result.match(/Topics: (.*)/);
+  const result = Array.isArray(output) ? output.join("").trim() : String(output).trim();
 
-      if (projectsMatch) {
-        projectsMatch[1]
-          .split(",")
-          .forEach((project) => state.discussedProjects.add(project.trim()));
-      }
-      if (topicsMatch) {
-        const newTopics = topicsMatch[1].split(",").map((topic) => topic.trim());
-        state.keyTopics = [...new Set([...state.keyTopics, ...newTopics])];
-      }
-    })
-    .catch((error) => {
-      console.error("Error updating state:", error);
-    });
+  const state = await getState(userId);
+
+  const projectsMatch = result.match(/New Projects: (.*)/);
+  const topicsMatch = result.match(/Topics: (.*)/);
+
+  if (projectsMatch) {
+    projectsMatch[1]
+      .split(",")
+      .forEach((project) => state.discussedProjects.add(project.trim()));
+  }
+  if (topicsMatch) {
+    const newTopics = topicsMatch[1].split(",").map((topic) => topic.trim());
+    state.keyTopics = [...new Set([...state.keyTopics, ...newTopics])];
+  }
+
+  await saveState(userId, state);
 }
 
 /**
  * Validates and corrects the current conversation context.
+ * @param {string} userId - The user ID for the chat session.
  */
-async function validateContext() {
-  const fullHistory = getMessageMemory();
+async function validateContext(userId: string) {
+  const fullHistory = await getMessageMemory(userId);
+  const state = await getState(userId);
   const validationPrompt = `
   Review the following conversation history and current state. Identify any inconsistencies or missing information in the state.
 
@@ -624,6 +625,8 @@ async function validateContext() {
         }
       });
     }
+
+    await saveState(userId, state);
   } catch (error) {
     console.error("Error validating context:", error);
   }
@@ -631,11 +634,11 @@ async function validateContext() {
 
 async function saveChatSession(userId: string, sessionId?: string) {
   try {
-    const messages = getMessageMemory().slice(1);
+    const messages = (await getMessageMemory(userId)).slice(1);
     if (!sessionId) {
       sessionId = uuidv4();
     }
-    const session = await ChatSessionModel.findOne({ sessionId, userId });
+    const state = await getState(userId);
 
     const discussedProjectsArray = Array.from(state.discussedProjects);
 
@@ -643,6 +646,8 @@ async function saveChatSession(userId: string, sessionId?: string) {
       ...state,
       discussedProjects: discussedProjectsArray,
     };
+
+    const session = await ChatSessionModel.findOne({ sessionId, userId });
 
     if (session) {
       session.messages = messages;
@@ -663,11 +668,12 @@ async function loadChatSession(userId: string, sessionId: string) {
   try {
     const session = await ChatSessionModel.findOne({ sessionId, userId });
     if (session) {
-      await initializeWithMessages(session.messages, true);
-      state = {
+      await initializeWithMessages(userId, session.messages, true);
+      const state = {
         ...session.state,
         discussedProjects: new Set(session.state.discussedProjects),
       };
+      await saveState(userId, state);
       return session.messages;
     } else {
       throw new Error("Session not found");
