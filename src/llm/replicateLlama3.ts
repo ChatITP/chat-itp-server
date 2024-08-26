@@ -295,7 +295,7 @@ async function summarizeConversation(messages: MessageType[]): Promise<string> {
  * @param {string} userId - The user ID for the chat session.
  * @returns {Promise<string>} - Returns the AI-generated response.
  */
-async function generate(userPrompt: string, userId: string): Promise<{ type: string, content: string }> {
+async function generate(userPrompt: string, userId: string): Promise<{ type: string, content: any }> {
   try {
     const state = await getState(userId);
     const messages = await getMessageMemory(userId);
@@ -332,14 +332,12 @@ Keep the entire prompt under 75 words. Avoid abstract concepts, technical terms,
         imagePrompt = imagePromptOutput.join("").trim();
       } else if (typeof imagePromptOutput === "string") {
         imagePrompt = imagePromptOutput.trim();
-      } else if (imagePromptOutput == null) {
-        throw new Error("Received null from Replicate API for image prompt creation");
       } else {
-        throw new Error(`Unexpected output type from Replicate API: ${typeof imagePromptOutput}`);
+        throw new Error("Unexpected output from Replicate API for image prompt creation");
       }
 
-      if (imagePrompt === "") {
-        throw new Error("Received empty string from Replicate API for image prompt creation");
+      if (!imagePrompt) {
+        throw new Error("Generated image prompt is empty");
       }
 
       const imageResult = await generateImage(imagePrompt);
@@ -366,24 +364,20 @@ Your response:`;
           response = responseOutput.join("").trim();
         } else if (typeof responseOutput === "string") {
           response = responseOutput.trim();
-        } else if (responseOutput == null) {
-          response = "Here's the image I've generated based on your request. Let me know if you'd like any changes!";
         } else {
-          console.warn("Unexpected response type from Replicate API:", typeof responseOutput);
-          response = "I've created an image based on your request. What do you think of it?";
+          response = "Here's the image I've generated based on your request. Let me know if you'd like any changes!";
         }
 
-        await addMessage(userId, `${response}\n\nImage URL: ${imageResult.content}`, "assistant");
-        return { type: "image", content: JSON.stringify({ imageUrl: imageResult.content, text: response }) };
+        await addMessage(userId, response, "assistant", "image", imageResult.content);
+        return { type: "image", content: { text: response, imageUrl: imageResult.content } };
       } else {
-        await addMessage(userId, imageResult.content, "assistant");
+        await addMessage(userId, imageResult.content, "assistant", "text");
         return { type: "text", content: imageResult.content };
       }
     }
     state.interactionCount++;
 
     let context = "";
-
     if (messages.length > SUMMARIZE_THRESHOLD) {
       const olderMessages = messages.slice(0, -MAX_FULL_HISTORY);
       const recentMessages = messages.slice(-MAX_FULL_HISTORY);
@@ -650,11 +644,26 @@ async function saveChatSession(userId: string, sessionId?: string) {
     const session = await ChatSessionModel.findOne({ sessionId, userId });
 
     if (session) {
-      session.messages = messages;
+      session.messages = messages.map(msg => ({
+        content: msg.content,
+        role: msg.role,
+        type: msg.type || 'text',
+        imageUrl: msg.imageUrl || ''
+      }));
       session.state = stateToSave;
       await session.save();
     } else {
-      const newSession = new ChatSessionModel({ sessionId, userId, messages, state: stateToSave });
+      const newSession = new ChatSessionModel({ 
+        sessionId, 
+        userId, 
+        messages: messages.map(msg => ({
+          content: msg.content,
+          role: msg.role,
+          type: msg.type || 'text',
+          imageUrl: msg.imageUrl || ''
+        })), 
+        state: stateToSave 
+      });
       await newSession.save();
     }
     return sessionId;
@@ -668,13 +677,21 @@ async function loadChatSession(userId: string, sessionId: string) {
   try {
     const session = await ChatSessionModel.findOne({ sessionId, userId });
     if (session) {
-      await initializeWithMessages(userId, session.messages, true);
+      const messages = session.messages.map((msg: { content: any; role: any; type: any; imageUrl: any; }) => ({
+        content: msg.content,
+        role: msg.role,
+        type: msg.type || 'text', 
+        imageUrl: msg.imageUrl || '' 
+      }));
+
+      await initializeWithMessages(userId, messages, true);
+
       const state = {
         ...session.state,
         discussedProjects: new Set(session.state.discussedProjects),
       };
       await saveState(userId, state);
-      return session.messages;
+      return messages;
     } else {
       throw new Error("Session not found");
     }

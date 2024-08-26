@@ -11,6 +11,8 @@ type ConversationState = {
 export type MessageType = {
   content: string;
   role: string;
+  type?: 'text' | 'image'; 
+  imageUrl?: string; 
 };
 
 export async function initialize(userId: string, systemPrompt: string) {
@@ -30,9 +32,9 @@ export async function getMessageMemory(userId: string): Promise<MessageType[]> {
   return messages ? JSON.parse(messages) : [];
 }
 
-export async function addMessage(userId: string, content: string, role: string) {
+export async function addMessage(userId: string, content: string, role: string, type: 'text' | 'image' = 'text', imageUrl?: string) {
   const messages = await getMessageMemory(userId);
-  messages.push({ content, role });
+  messages.push({ content, role, type, imageUrl });
   await redis.set(`session:${userId}:messages`, JSON.stringify(messages));
 }
 

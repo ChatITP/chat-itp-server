@@ -5,7 +5,6 @@ import {
   generate,
   saveChatSession,
   loadChatSession,
-  getAllSessionIds,
   initializeWithMessages,
   generateSuggestions,
   splitPhrase,
@@ -97,7 +96,7 @@ router.post("/generate", async (req: Request, res: Response) => {
   try {
     const result = await generate(userPrompt, req.user.userId);
     if (result.type === "image") {
-      const { imageUrl, text } = JSON.parse(result.content);
+      const { imageUrl, text } = result.content;
       res.json({ success: true, type: "image", content: { imageUrl, text } });
     } else {
       res.json({ success: true, type: result.type, content: result.content });

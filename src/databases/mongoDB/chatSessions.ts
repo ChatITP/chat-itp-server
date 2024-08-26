@@ -3,6 +3,8 @@ import mongoose, { Schema, Document } from "mongoose";
 interface Message {
   content: string;
   role: string;
+  type: 'text' | 'image'; 
+  imageUrl?: string;
 }
 
 interface ChatSession extends Document {
@@ -21,7 +23,12 @@ interface ChatSession extends Document {
 const chatSessionSchema = new Schema({
   sessionId: { type: String, required: true },
   userId: { type: String, required: true },
-  messages: [{ content: String, role: String }],
+  messages: [{
+    content: String,
+    role: String,
+    type: { type: String, enum: ['text', 'image'], default: 'text' },
+    imageUrl: { type: String, default: '' }
+  }],
   state: {
     discussedProjects: [String],
     keyTopics: [String],
