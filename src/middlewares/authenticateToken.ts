@@ -19,7 +19,7 @@ function authenticateToken(req: Request, res: Response, next: NextFunction) {
     res.status(403).json({ success: false, error: "Access token invalid" });
     return;
   }
-  req.user = user;
+  req.user = { userId: user.userId, ...user };
   next();
 }
 

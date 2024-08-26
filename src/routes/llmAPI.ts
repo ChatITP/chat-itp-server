@@ -5,7 +5,6 @@ import {
   generate,
   saveChatSession,
   loadChatSession,
-  getAllSessionIds,
   initializeWithMessages,
   generateSuggestions,
   splitPhrase,
@@ -23,10 +22,10 @@ const router = express.Router();
  */
 router.post("/initialize", async (req: Request, res: Response) => {
   const { systemPrompt } = req.body;
-  if (!systemPrompt) {
+  if (!systemPrompt || !req.user?.userId) {
     return res.status(400).json({ success: false, error: "Invalid request" });
   }
-  await initialize(systemPrompt);
+  await initialize(req.user.userId, systemPrompt);
   res.json({ success: true });
 });
 
@@ -38,14 +37,14 @@ router.post("/initialize", async (req: Request, res: Response) => {
  */
 router.post("/initialize-with-messages", async (req: Request, res: Response) => {
   const { messages } = req.body;
-  if (!Array.isArray(messages) || messages.length === 0) {
+  if (!Array.isArray(messages) || messages.length === 0 || !req.user?.userId) {
     return res
       .status(400)
       .json({ success: false, error: "Invalid request. Messages array is required." });
   }
 
   try {
-    await initializeWithMessages(messages);
+    await initializeWithMessages(req.user.userId, messages);
     res.json({ success: true });
   } catch (e) {
     console.error("Error initializing with messages:", e);
@@ -85,22 +84,26 @@ router.post("/replace", async (req, res) => {
 
 /**
  * POST /generate
- * Generate an AI response based on the user prompt.
+ * Generate an AI response or image based on the user prompt.
  * @param {string} userPrompt - The user prompt to generate a response for.
- * @returns {object} - JSON response with the generated AI content or an error message.
+ * @returns {object} - JSON response with the generated AI content (text or image URL) or an error message.
  */
 router.post("/generate", async (req: Request, res: Response) => {
   const { userPrompt } = req.body;
-  console.log("userPrompt", userPrompt);
-  if (typeof userPrompt !== "string") {
+  if (typeof userPrompt !== "string" || !req.user?.userId) {
     return res.status(400).json({ success: false, error: "Invalid request" });
   }
   try {
-    const aiResponse = await generate(userPrompt);
-    res.json({ success: true, content: aiResponse });
+    const result = await generate(userPrompt, req.user.userId);
+    if (result.type === "image") {
+      const { imageUrl, text } = result.content;
+      res.json({ success: true, type: "image", content: { imageUrl, text } });
+    } else {
+      res.json({ success: true, type: result.type, content: result.content });
+    }
   } catch (e) {
     console.error("Error:", e);
-    res.status(500).json({ success: false, error: "Prediction failed." });
+    res.status(500).json({ success: false, error: "Generation failed." });
   }
 });
 
@@ -112,7 +115,10 @@ router.post("/generate", async (req: Request, res: Response) => {
  */
 router.post("/save-session", async (req: Request, res: Response) => {
   try {
-    const sessionId = await saveChatSession(req.body.sessionId);
+    if (!req.user?.userId) {
+      return res.status(400).json({ success: false, error: "Invalid request" });
+    }
+    const sessionId = await saveChatSession(req.user.userId, req.body.sessionId);
     res.json({ success: true, sessionId });
   } catch (e) {
     console.error("Error saving session:", e);
@@ -127,12 +133,11 @@ router.post("/save-session", async (req: Request, res: Response) => {
  * @returns {object} - JSON response with the loaded messages or an error message.
  */
 router.post("/load-session", async (req: Request, res: Response) => {
-  const { sessionId } = req.body;
-  if (!sessionId) {
-    return res.status(400).json({ success: false, error: "Invalid request" });
-  }
   try {
-    const messages = await loadChatSession(sessionId);
+    if (!req.user?.userId || !req.body.sessionId) {
+      return res.status(400).json({ success: false, error: "Invalid request" });
+    }
+    const messages = await loadChatSession(req.user.userId, req.body.sessionId);
     res.json({ success: true, messages });
   } catch (e) {
     console.error("Error loading session:", e);
@@ -147,7 +152,10 @@ router.post("/load-session", async (req: Request, res: Response) => {
  */
 router.get("/sessions", async (req: Request, res: Response) => {
   try {
-    const sessions = await getAllSessions();
+    if (!req.user?.userId) {
+      return res.status(400).json({ success: false, error: "Invalid request" });
+    }
+    const sessions = await getAllSessions(req.user.userId);
     res.json({ success: true, sessions });
   } catch (e) {
     console.error("Error fetching sessions:", e);

@@ -53,8 +53,8 @@ router.post("/login", async (req: Request, res: Response) => {
   try {
     const correctCredential = await users.login(email, password);
     if (correctCredential) {
-      const accessToken = generateAccessToken(email);
-      const refreshToken = generateRefreshToken(email);
+      const accessToken = generateAccessToken(correctCredential.id);
+      const refreshToken = generateRefreshToken(correctCredential.id);
 
       res.cookie("accessToken", accessToken, { httpOnly: true, path: "/" });
       res.cookie("refreshToken", refreshToken, {
