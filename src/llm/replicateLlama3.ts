@@ -79,7 +79,7 @@ Now, analyze this:
 Input: "${input}"
 Output:`;
 
-  const output = (await replicate.run("meta/meta-llama-3.1-405b-instruct", {
+  const output = (await replicate.run("meta/meta-llama-3-70b-instruct", {
     input: { prompt },
   })) as string | string[];
 
@@ -129,7 +129,7 @@ Now, analyze this:
 Input: "${input}"
 Output:`;
 
-  const output = (await replicate.run("meta/meta-llama-3.1-405b-instruct", {
+  const output = (await replicate.run("meta/meta-llama-3-70b-instruct", {
     input: { prompt },
   })) as string | string[];
 
@@ -174,7 +174,7 @@ Now, complete this:
 Input: "${phrase}"
 Output: `;
 
-  const output = (await replicate.run("meta/meta-llama-3.1-405b-instruct", {
+  const output = (await replicate.run("meta/meta-llama-3-70b-instruct", {
     input: { prompt },
   })) as string | string[];
 
@@ -238,7 +238,7 @@ async function rebuildState(userId: string, messages: MessageType[]) {
   Topics: [list of key topics]
   `;
 
-  const output = await replicate.run("meta/meta-llama-3.1-405b-instruct", {
+  const output = await replicate.run("meta/meta-llama-3-70b-instruct", {
     input: { prompt: stateRebuildPrompt },
   }) as string[];
 
@@ -279,7 +279,7 @@ async function summarizeConversation(messages: MessageType[]): Promise<string> {
   Summary:`;
 
   try {
-    const output = (await replicate.run("meta/meta-llama-3.1-405b-instruct", {
+    const output = (await replicate.run("meta/meta-llama-3-70b-instruct", {
       input: { prompt: summarizationPrompt },
     })) as string[];
     return output.join("").trim();
@@ -323,7 +323,7 @@ Please provide an image generation prompt that:
 Keep the entire prompt under 75 words. Avoid abstract concepts, technical terms, or overly specific instructions. Do not use verbs like "generate" or "create". Provide only the image generation prompt, without any additional explanation or context.
 `;
 
-      const imagePromptOutput = await replicate.run("meta/meta-llama-3.1-405b-instruct", {
+      const imagePromptOutput = await replicate.run("meta/meta-llama-3-70b-instruct", {
         input: { prompt: imagePromptCreationPrompt },
       }) as string | string[] | null;
 
@@ -355,7 +355,7 @@ Generated image based on: ${imagePrompt}
 
 Your response:`;
 
-        const responseOutput = await replicate.run("meta/meta-llama-3.1-405b-instruct", {
+        const responseOutput = await replicate.run("meta/meta-llama-3-70b-instruct", {
           input: { prompt: responsePrompt },
         }) as string | string[] | null;
 
@@ -409,7 +409,7 @@ Your response:`;
 
     assistant:`;
 
-    const output = await replicate.run("meta/meta-llama-3.1-405b-instruct", {
+    const output = await replicate.run("meta/meta-llama-3-70b-instruct", {
       input: { prompt: inputPrompt },
     });
 
@@ -455,7 +455,7 @@ async function fetchRelevantProjects(userPrompt: string, userId: string): Promis
   Query: ${userPrompt}
   Answer:`;
 
-  const intentOutput = (await replicate.run("meta/meta-llama-3.1-405b-instruct", {
+  const intentOutput = (await replicate.run("meta/meta-llama-3-70b-instruct", {
     input: { prompt: intentClassificationPrompt },
   })) as string[];
   const intentResult = intentOutput.join("").replace(/\n/g, "").trim().toUpperCase();
@@ -549,7 +549,7 @@ async function updateState(userId: string, response: string) {
   Topics: [list of key topics]
   `;
 
-  const output = await replicate.run("meta/meta-llama-3.1-405b-instruct", {
+  const output = await replicate.run("meta/meta-llama-3-70b-instruct", {
     input: { prompt: updateStatePrompt },
   }) as string[];
 
@@ -597,7 +597,7 @@ async function validateContext(userId: string) {
   `;
 
   try {
-    const output = (await replicate.run("meta/meta-llama-3.1-405b-instruct", {
+    const output = (await replicate.run("meta/meta-llama-3-70b-instruct", {
       input: { prompt: validationPrompt },
     })) as string[];
     const result = output.join("").trim();
