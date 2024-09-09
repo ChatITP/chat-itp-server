@@ -1,8 +1,28 @@
 import express from "express";
 import { Request, Response } from "express";
 import { projects, prompts } from "../databases/mongoDB";
+import Report, {IReport} from "../databases/mongoDB/Report";
 
 const router = express.Router();
+
+router.post("/reports", async (req: Request, res: Response) => {
+  try {
+    const { type, title, description, email } = req.body;
+
+    const newReport: IReport = new Report({
+      type,
+      title,
+      description,
+      email
+    });
+
+    const savedReport = await newReport.save();
+    res.status(201).json(savedReport);
+  } catch (error) {
+    console.error("Failed to save report:", error);
+    res.status(500).json({ error: "Failed to save report" });
+  }
+});
 
 router.get("/projectCount", async (req: Request, res: Response) => {
   try {
