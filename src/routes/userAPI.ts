@@ -98,7 +98,7 @@ router.post("/refresh", async (req: Request, res: Response) => {
     res.status(403).json({ success: false, error: "Invalid refresh token" });
     return;
   }
-  const accessToken = generateAccessToken(user.email);
+  const accessToken = generateAccessToken(user.userId);
   res.cookie("accessToken", accessToken, { httpOnly: true, path: "/" });
   res.status(200).json({ success: true });
 });

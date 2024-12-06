@@ -15,7 +15,7 @@ function authenticateToken(req: Request, res: Response, next: NextFunction) {
   }
 
   const user = verifyAccessToken(accessToken);
-  if (user === null) {
+  if (!user || !user.userId) {
     res.status(403).json({ success: false, error: "Access token invalid" });
     return;
   }

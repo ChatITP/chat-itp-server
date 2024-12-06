@@ -22,6 +22,7 @@ const router = express.Router();
  */
 router.post("/initialize", async (req: Request, res: Response) => {
   const { systemPrompt } = req.body;
+  console.log(req.user);
   if (!systemPrompt || !req.user?.userId) {
     return res.status(400).json({ success: false, error: "Invalid request" });
   }
