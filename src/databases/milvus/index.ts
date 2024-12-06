@@ -50,17 +50,7 @@ async function searchProjectsByText(text: string, limit: number = 5) {
   const embedding = await generateEmbedding(text);
   const results = await searchProjects(embedding, limit);
 
-  // Temporarily remove student names from the result
-  const namedFiltered = results.map((result) => {
-    let filteredText = result.text.split("\n");
-    filteredText.splice(3, 6);
-    filteredText = filteredText.join("\n");
-    return { ...result, text: filteredText };
-  });
-
-  console.log(namedFiltered);
-
-  return namedFiltered;
+  return results;
 }
 
 export { searchProjects, searchProjectsByText };
